@@ -22,7 +22,7 @@ func main() {
 	client := proto.NewTicTacToeClient(conn)
 
 	ctx := context.Background()
-	stateResult, err := client.NewGame(ctx, &proto.Empty{})
+	stateResult, err := client.NewGame(ctx, &proto.New{GameType: 1})
 	id := stateResult.Id
 	ongoingGame := true
 	r := rand.New(rand.NewSource(199))
