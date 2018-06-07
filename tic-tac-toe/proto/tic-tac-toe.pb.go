@@ -23,35 +23,43 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
-type Empty struct {
+type New struct {
+	GameType             int64    `protobuf:"varint,1,opt,name=gameType,proto3" json:"gameType,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *Empty) Reset()         { *m = Empty{} }
-func (m *Empty) String() string { return proto.CompactTextString(m) }
-func (*Empty) ProtoMessage()    {}
-func (*Empty) Descriptor() ([]byte, []int) {
-	return fileDescriptor_tic_tac_toe_173ed5b221bc5dc0, []int{0}
+func (m *New) Reset()         { *m = New{} }
+func (m *New) String() string { return proto.CompactTextString(m) }
+func (*New) ProtoMessage()    {}
+func (*New) Descriptor() ([]byte, []int) {
+	return fileDescriptor_tic_tac_toe_fba36d77517816bb, []int{0}
 }
-func (m *Empty) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_Empty.Unmarshal(m, b)
+func (m *New) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_New.Unmarshal(m, b)
 }
-func (m *Empty) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_Empty.Marshal(b, m, deterministic)
+func (m *New) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_New.Marshal(b, m, deterministic)
 }
-func (dst *Empty) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Empty.Merge(dst, src)
+func (dst *New) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_New.Merge(dst, src)
 }
-func (m *Empty) XXX_Size() int {
-	return xxx_messageInfo_Empty.Size(m)
+func (m *New) XXX_Size() int {
+	return xxx_messageInfo_New.Size(m)
 }
-func (m *Empty) XXX_DiscardUnknown() {
-	xxx_messageInfo_Empty.DiscardUnknown(m)
+func (m *New) XXX_DiscardUnknown() {
+	xxx_messageInfo_New.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Empty proto.InternalMessageInfo
+var xxx_messageInfo_New proto.InternalMessageInfo
+
+func (m *New) GetGameType() int64 {
+	if m != nil {
+		return m.GameType
+	}
+	return 0
+}
 
 type StateResult struct {
 	Id                   int64    `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -66,7 +74,7 @@ func (m *StateResult) Reset()         { *m = StateResult{} }
 func (m *StateResult) String() string { return proto.CompactTextString(m) }
 func (*StateResult) ProtoMessage()    {}
 func (*StateResult) Descriptor() ([]byte, []int) {
-	return fileDescriptor_tic_tac_toe_173ed5b221bc5dc0, []int{1}
+	return fileDescriptor_tic_tac_toe_fba36d77517816bb, []int{1}
 }
 func (m *StateResult) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StateResult.Unmarshal(m, b)
@@ -119,7 +127,7 @@ func (m *Action) Reset()         { *m = Action{} }
 func (m *Action) String() string { return proto.CompactTextString(m) }
 func (*Action) ProtoMessage()    {}
 func (*Action) Descriptor() ([]byte, []int) {
-	return fileDescriptor_tic_tac_toe_173ed5b221bc5dc0, []int{2}
+	return fileDescriptor_tic_tac_toe_fba36d77517816bb, []int{2}
 }
 func (m *Action) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Action.Unmarshal(m, b)
@@ -154,7 +162,7 @@ func (m *Action) GetMove() int64 {
 }
 
 func init() {
-	proto.RegisterType((*Empty)(nil), "proto.Empty")
+	proto.RegisterType((*New)(nil), "proto.New")
 	proto.RegisterType((*StateResult)(nil), "proto.StateResult")
 	proto.RegisterType((*Action)(nil), "proto.Action")
 }
@@ -171,7 +179,7 @@ const _ = grpc.SupportPackageIsVersion4
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type TicTacToeClient interface {
-	NewGame(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*StateResult, error)
+	NewGame(ctx context.Context, in *New, opts ...grpc.CallOption) (*StateResult, error)
 	Move(ctx context.Context, in *Action, opts ...grpc.CallOption) (*StateResult, error)
 }
 
@@ -183,7 +191,7 @@ func NewTicTacToeClient(cc *grpc.ClientConn) TicTacToeClient {
 	return &ticTacToeClient{cc}
 }
 
-func (c *ticTacToeClient) NewGame(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*StateResult, error) {
+func (c *ticTacToeClient) NewGame(ctx context.Context, in *New, opts ...grpc.CallOption) (*StateResult, error) {
 	out := new(StateResult)
 	err := c.cc.Invoke(ctx, "/proto.TicTacToe/NewGame", in, out, opts...)
 	if err != nil {
@@ -203,7 +211,7 @@ func (c *ticTacToeClient) Move(ctx context.Context, in *Action, opts ...grpc.Cal
 
 // TicTacToeServer is the server API for TicTacToe service.
 type TicTacToeServer interface {
-	NewGame(context.Context, *Empty) (*StateResult, error)
+	NewGame(context.Context, *New) (*StateResult, error)
 	Move(context.Context, *Action) (*StateResult, error)
 }
 
@@ -212,7 +220,7 @@ func RegisterTicTacToeServer(s *grpc.Server, srv TicTacToeServer) {
 }
 
 func _TicTacToe_NewGame_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Empty)
+	in := new(New)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -224,7 +232,7 @@ func _TicTacToe_NewGame_Handler(srv interface{}, ctx context.Context, dec func(i
 		FullMethod: "/proto.TicTacToe/NewGame",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TicTacToeServer).NewGame(ctx, req.(*Empty))
+		return srv.(TicTacToeServer).NewGame(ctx, req.(*New))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -265,22 +273,23 @@ var _TicTacToe_serviceDesc = grpc.ServiceDesc{
 }
 
 func init() {
-	proto.RegisterFile("proto/tic-tac-toe.proto", fileDescriptor_tic_tac_toe_173ed5b221bc5dc0)
+	proto.RegisterFile("proto/tic-tac-toe.proto", fileDescriptor_tic_tac_toe_fba36d77517816bb)
 }
 
-var fileDescriptor_tic_tac_toe_173ed5b221bc5dc0 = []byte{
-	// 203 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x12, 0x2f, 0x28, 0xca, 0x2f,
-	0xc9, 0xd7, 0x2f, 0xc9, 0x4c, 0xd6, 0x2d, 0x49, 0x4c, 0xd6, 0x2d, 0xc9, 0x4f, 0xd5, 0x03, 0x8b,
-	0x08, 0xb1, 0x82, 0x29, 0x25, 0x76, 0x2e, 0x56, 0xd7, 0xdc, 0x82, 0x92, 0x4a, 0x25, 0x6f, 0x2e,
-	0xee, 0xe0, 0x92, 0xc4, 0x92, 0xd4, 0xa0, 0xd4, 0xe2, 0xd2, 0x9c, 0x12, 0x21, 0x3e, 0x2e, 0xa6,
-	0xcc, 0x14, 0x09, 0x46, 0x05, 0x46, 0x0d, 0xe6, 0x20, 0xa6, 0xcc, 0x14, 0x21, 0x11, 0x2e, 0xd6,
-	0x62, 0x90, 0xb4, 0x04, 0x93, 0x02, 0xb3, 0x06, 0x73, 0x10, 0x84, 0x23, 0x24, 0xc6, 0xc5, 0x56,
-	0x04, 0x56, 0x2f, 0xc1, 0x0c, 0x56, 0x09, 0xe5, 0x29, 0xe9, 0x70, 0xb1, 0x39, 0x26, 0x97, 0x64,
-	0xe6, 0xe7, 0x61, 0x98, 0x23, 0xc4, 0xc5, 0x92, 0x9b, 0x5f, 0x06, 0x32, 0x06, 0x24, 0x02, 0x66,
-	0x1b, 0xa5, 0x73, 0x71, 0x86, 0x64, 0x26, 0x87, 0x24, 0x26, 0x87, 0xe4, 0xa7, 0x0a, 0xe9, 0x72,
-	0xb1, 0xfb, 0xa5, 0x96, 0xbb, 0x27, 0xe6, 0xa6, 0x0a, 0xf1, 0x40, 0x9c, 0xaa, 0x07, 0x76, 0xa0,
-	0x94, 0x10, 0x94, 0x87, 0xe4, 0x4a, 0x25, 0x06, 0x21, 0x6d, 0x2e, 0x16, 0xdf, 0xfc, 0xb2, 0x54,
-	0x21, 0x5e, 0xa8, 0x2c, 0xc4, 0x5a, 0xec, 0x8a, 0x93, 0xd8, 0xc0, 0x82, 0xc6, 0x80, 0x00, 0x00,
-	0x00, 0xff, 0xff, 0xef, 0xd0, 0x77, 0xe1, 0x15, 0x01, 0x00, 0x00,
+var fileDescriptor_tic_tac_toe_fba36d77517816bb = []byte{
+	// 214 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x8f, 0x5f, 0x4b, 0x86, 0x30,
+	0x14, 0xc6, 0x7b, 0xdd, 0xab, 0xd5, 0x89, 0xba, 0x38, 0x44, 0x89, 0x57, 0xb6, 0x2b, 0xc1, 0x34,
+	0xa8, 0x4f, 0xd0, 0x55, 0x17, 0x91, 0x17, 0xb6, 0x2f, 0xb0, 0xe6, 0x21, 0x06, 0xd9, 0x44, 0x4f,
+	0x4a, 0xdf, 0x3e, 0x9c, 0x23, 0x82, 0xde, 0xab, 0x3d, 0x7f, 0x7e, 0x3c, 0xdb, 0xe0, 0x7a, 0x18,
+	0x1d, 0xbb, 0x3b, 0xb6, 0xa6, 0x62, 0x6d, 0x2a, 0x76, 0x54, 0xfb, 0x04, 0x63, 0x7f, 0xc8, 0x1b,
+	0x10, 0x0d, 0x2d, 0x98, 0xc1, 0xc9, 0xbb, 0xee, 0x49, 0x7d, 0x0f, 0x94, 0xee, 0xf2, 0x5d, 0x21,
+	0xda, 0x5f, 0x2f, 0x9f, 0xe1, 0xec, 0x95, 0x35, 0x53, 0x4b, 0xd3, 0xd7, 0x07, 0xe3, 0x05, 0x44,
+	0xb6, 0x0b, 0x50, 0x64, 0x3b, 0xbc, 0x84, 0x78, 0x5a, 0xeb, 0x34, 0xca, 0x45, 0x21, 0xda, 0xcd,
+	0xe0, 0x15, 0x24, 0xa3, 0xe7, 0x53, 0xe1, 0xc9, 0xe0, 0xe4, 0x2d, 0x24, 0x8f, 0x86, 0xad, 0xfb,
+	0xfc, 0xb7, 0x83, 0xb0, 0xef, 0xdd, 0xbc, 0xce, 0xac, 0x89, 0xd7, 0xf7, 0x04, 0xa7, 0xca, 0x1a,
+	0xa5, 0x8d, 0x72, 0x84, 0x25, 0x1c, 0x37, 0xb4, 0x3c, 0xe9, 0x9e, 0x10, 0xb6, 0x4f, 0xd4, 0x0d,
+	0x2d, 0x19, 0x06, 0xfd, 0xe7, 0x8d, 0xf2, 0x08, 0x4b, 0xd8, 0xbf, 0xb8, 0x99, 0xf0, 0x3c, 0xb4,
+	0xdb, 0xa5, 0x87, 0xe1, 0xb7, 0xc4, 0x87, 0x0f, 0x3f, 0x01, 0x00, 0x00, 0xff, 0xff, 0x42, 0x6a,
+	0x69, 0x4d, 0x2d, 0x01, 0x00, 0x00,
 }
