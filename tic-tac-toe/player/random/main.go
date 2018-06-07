@@ -2,10 +2,12 @@ package main
 
 import (
 	"log"
-	"google.golang.org/grpc"
-	"golang.org/x/net/context"
+
+	"math/rand"
 
 	"github.com/arenaio/woodhack2018/tic-tac-toe/proto"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 func main() {
@@ -21,5 +23,34 @@ func main() {
 
 	ctx := context.Background()
 	stateResult, err := client.NewGame(ctx, &proto.Empty{})
-	print(stateResult)
+	id := stateResult.Id
+	ongoingGame := true
+	r := rand.New(rand.NewSource(199))
+
+	for {
+		print(stateResult)
+		switch stateResult.Result {
+		case -2:
+			// invalid move
+			break
+		case 1:
+			// game won
+			ongoingGame = false
+			break
+		case 2:
+			// game lost
+			ongoingGame = false
+			break
+		default:
+			// valid move
+		}
+		if !ongoingGame {
+			break
+		}
+		// state size? assuming 81 for now
+		stateResult, err := client.Move(ctx, &proto.Action{Id: id, Move: r.Int63n(81)})
+
+		print(stateResult)
+		print(err)
+	}
 }
