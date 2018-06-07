@@ -33,7 +33,9 @@ type Server struct {
 }
 
 func NewServer() *Server {
-	return &Server{}
+	return &Server{
+		games: make(map[int64]*Game),
+	}
 }
 
 func (s *Server) NewGame(ctx context.Context, new *proto.New) (*proto.StateResult, error) {
