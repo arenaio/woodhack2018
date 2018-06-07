@@ -1,16 +1,16 @@
 package main
 
 import (
-	"net"
-	"log"
-	"fmt"
 	"errors"
+	"fmt"
+	"log"
+	"net"
 
-	"google.golang.org/grpc"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 
-	"github.com/arenaio/woodhack2018/tic-tac-toe/proto"
 	ttt "github.com/arenaio/woodhack2018/tic-tac-toe"
+	"github.com/arenaio/woodhack2018/tic-tac-toe/proto"
 )
 
 func main() {
@@ -61,7 +61,9 @@ func (s *Server) NewGame(ctx context.Context, new *proto.New) (*proto.StateResul
 			turn:  1,
 		}
 		s.games[playerId/2] = g
+		print("New game created: ", playerId/2)
 	} else {
+		print("Trying to join game: ", (playerId-1)/2)
 		g, ok := s.games[(playerId-1)/2]
 		if !ok {
 			return nil, errors.New("game not found")
@@ -102,8 +104,8 @@ func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult,
 	// TODO: wait until it's our turn again
 
 	return &proto.StateResult{
-		Id: a.Id,
-		State: g.state,
+		Id:     a.Id,
+		State:  g.state,
 		Result: ttt.ValidMove,
 	}, nil
 }

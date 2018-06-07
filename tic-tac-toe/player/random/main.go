@@ -14,7 +14,7 @@ import (
 func main() {
 	address := ":8000"
 
-	conn, err := grpc.Dial(address)
+	conn, err := grpc.Dial(address, grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("unable to connect on port %s: %v", address, err)
 	}
@@ -28,8 +28,10 @@ func main() {
 	ongoingGame := true
 	r := rand.New(rand.NewSource(199))
 
+	turnCount := 0
+	fieldCount := 9
+
 	for {
-		print(stateResult)
 		switch stateResult.Result {
 		case ttt.InvalidMove:
 			// invalid move
@@ -45,13 +47,15 @@ func main() {
 		default:
 			// valid move
 		}
-		if !ongoingGame {
+		if !ongoingGame || turnCount > fieldCount {
 			break
 		}
+		turnCount++
 		// state size? assuming 81 for now
-		stateResult, err := client.Move(ctx, &proto.Action{Id: id, Move: r.Int63n(9)})
+		stateResult, err := client.Move(ctx, &proto.Action{Id: id, Move: r.Int63n(int64(fieldCount))})
 
-		print(stateResult)
-		print(err)
+		if stateResult != nil && err == nil {
+			stateResult = nil
+		}
 	}
 }
