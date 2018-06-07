@@ -3,11 +3,13 @@ syntax = "proto3";
 package proto;
 
 service TicTacToe {
-    rpc NewGame(Empty) returns (StateResult) {}
+    rpc NewGame(New) returns (StateResult) {}
     rpc Move(Action) returns (StateResult) {}
 }
 
-message Empty {}
+message New {
+    int64 gameType = 1;
+}
 
 message StateResult {
     int64 id = 1;
