@@ -3,11 +3,14 @@ package main
 import (
 	"net"
 	"log"
+	"fmt"
+	"errors"
 
 	"google.golang.org/grpc"
 	"golang.org/x/net/context"
 
 	"github.com/arenaio/woodhack2018/tic-tac-toe/proto"
+	ttt "github.com/arenaio/woodhack2018/tic-tac-toe"
 )
 
 func main() {
@@ -23,24 +26,88 @@ func main() {
 	srv.Serve(listener)
 }
 
-type Server struct{
-	games map[int64]*Game
+type Server struct {
+	games        map[int64]*Game
 	nextPlayerId int64
+	//ultimateGames map[int64]*Game
 }
 
 func NewServer() *Server {
 	return &Server{}
 }
 
-func (s *Server) NewGame(context.Context, *proto.Empty) (*proto.StateResult, error) {
-	return nil, nil
+func (s *Server) NewGame(ctx context.Context, new *proto.New) (*proto.StateResult, error) {
+	//ultimate := new.gameType == 1
+	switch new.GameType {
+	case ttt.RegularTicTacToe:
+		break
+	default:
+		return nil, errors.New(fmt.Sprintf(
+			"gametype %d not implemented yet",
+			new.GameType,
+		))
+	}
+
+	playerId := s.nextPlayerId
+
+	var g *Game
+	if playerId%2 == 0 {
+		g = &Game{
+			p1:    playerId,
+			p2:    -1,
+			state: make([]int64, 9),
+			turn:  1,
+		}
+		s.games[playerId/2] = g
+	} else {
+		g, ok := s.games[(playerId-1)/2]
+		if !ok {
+			return nil, errors.New("game not found")
+		}
+		g.p2 = playerId
+	}
+
+	s.nextPlayerId++
+
+	return &proto.StateResult{
+		Id:     playerId,
+		State:  g.state,
+		Result: 0,
+	}, nil
 }
 
-func (s *Server) Move(context.Context, *proto.Action) (*proto.StateResult, error)   {
-	return nil, nil
+func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult, error) {
+	g, ok := s.games[a.Id-a.Id%2]
+	if !ok {
+		return nil, errors.New("game not found")
+	}
+
+	if (g.turn == 1 && a.Id != g.p1) || (g.turn == 2 && a.Id != g.p2) {
+		return nil, errors.New("it's not your turn")
+	}
+
+	if g.state[a.Move] != 0 {
+		return &proto.StateResult{
+			Id:     a.Id,
+			State:  g.state,
+			Result: ttt.InvalidMove,
+		}, nil
+	}
+
+	g.state[a.Move] = g.turn
+	g.turn = 2 - g.turn
+
+	// TODO: wait until it's our turn again
+
+	return &proto.StateResult{
+		Id: a.Id,
+		State: g.state,
+		Result: ttt.ValidMove,
+	}, nil
 }
 
 type Game struct {
 	p1, p2 int64
-	state []int64
+	state  []int64
+	turn   int64
 }

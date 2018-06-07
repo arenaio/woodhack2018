@@ -2,12 +2,13 @@ package main
 
 import (
 	"log"
-
 	"math/rand"
 
-	"github.com/arenaio/woodhack2018/tic-tac-toe/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+
+	ttt "github.com/arenaio/woodhack2018/tic-tac-toe"
+	"github.com/arenaio/woodhack2018/tic-tac-toe/proto"
 )
 
 func main() {
@@ -22,7 +23,7 @@ func main() {
 	client := proto.NewTicTacToeClient(conn)
 
 	ctx := context.Background()
-	stateResult, err := client.NewGame(ctx, &proto.New{GameType: 1})
+	stateResult, err := client.NewGame(ctx, &proto.New{GameType: ttt.RegularTicTacToe})
 	id := stateResult.Id
 	ongoingGame := true
 	r := rand.New(rand.NewSource(199))
@@ -30,14 +31,14 @@ func main() {
 	for {
 		print(stateResult)
 		switch stateResult.Result {
-		case -2:
+		case ttt.InvalidMove:
 			// invalid move
 			break
-		case 1:
+		case ttt.Won:
 			// game won
 			ongoingGame = false
 			break
-		case 2:
+		case ttt.Lost:
 			// game lost
 			ongoingGame = false
 			break
@@ -48,7 +49,7 @@ func main() {
 			break
 		}
 		// state size? assuming 81 for now
-		stateResult, err := client.Move(ctx, &proto.Action{Id: id, Move: r.Int63n(81)})
+		stateResult, err := client.Move(ctx, &proto.Action{Id: id, Move: r.Int63n(9)})
 
 		print(stateResult)
 		print(err)
