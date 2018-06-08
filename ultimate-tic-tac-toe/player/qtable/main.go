@@ -85,7 +85,7 @@ func (q *Qlearning) train(lastState []int64, action int64, futureState []int64, 
 	learnedValue := float64(reward) + q.DiscountFactor*estimatedOptimalFuture
 	actionTable[action] = (1-q.LearningRate)*actionTable[action] + q.LearningRate*learnedValue
 
-	q.ExplorationRate *= 0.99
+	q.ExplorationRate *= 0.9999999
 }
 
 func (q *Qlearning) runGameOnServer(address, name string) {
@@ -114,6 +114,7 @@ func (q *Qlearning) runGameOnServer(address, name string) {
 		stateResult, err = client.Move(ctx, &proto.Action{Id: id, Move: action})
 
 		if err != nil {
+			displayState(lastState)
 			log.Fatal(err)
 		}
 
@@ -158,19 +159,19 @@ func (q *Qlearning) getActionTable(state []int64) map[int64]float64 {
 func (q *Qlearning) makeMove(state []int64) int64 {
 	actionTable := q.getActionTable(state)
 
-	displayState(state)
-	log.Printf(
-		"\n\n%.4f %.4f %.4f\n%.4f %.4f %.4f\n%.4f %.4f %.4f",
-		actionTable[0],
-		actionTable[1],
-		actionTable[2],
-		actionTable[3],
-		actionTable[4],
-		actionTable[5],
-		actionTable[6],
-		actionTable[7],
-		actionTable[8],
-	)
+	//displayState(state)
+	//log.Printf(
+	//	"\n\n%.4f %.4f %.4f\n%.4f %.4f %.4f\n%.4f %.4f %.4f",
+	//	actionTable[0],
+	//	actionTable[1],
+	//	actionTable[2],
+	//	actionTable[3],
+	//	actionTable[4],
+	//	actionTable[5],
+	//	actionTable[6],
+	//	actionTable[7],
+	//	actionTable[8],
+	//)
 
 	if r.Float64() < q.ExplorationRate {
 		log.Printf("Explore (%.2f)", q.ExplorationRate)
@@ -181,7 +182,6 @@ func (q *Qlearning) makeMove(state []int64) int64 {
 	bestMove := int64(-1)
 	bestValue := -math.MaxFloat64
 	for action, value := range actionTable {
-		log.Printf("current: %f, best: %f, action: %d, best: %d", value, bestValue, action, bestMove)
 		if value > bestValue {
 			bestValue = value
 			bestMove = action
@@ -192,17 +192,37 @@ func (q *Qlearning) makeMove(state []int64) int64 {
 }
 
 func displayState(state []int64) {
+	i := 0
 	print("\n")
-	for index, element := range state {
-		print(" ", element, " ")
-		if len(state) == 81 && (index+1)%3 == 0 {
-			print("|")
-		}
-		if len(state) == 81 && (index+1)%9 == 0 {
-			print("\n──────────────────────────────\n")
-		}
-		if len(state) != 81 && (index+1)%3 == 0 {
-			print("\n")
-		}
-	}
+	fmt.Printf("┌───┬───┬───┐   ┌───┬───┬───┐   ┌───┬───┬───┐ \n")
+	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", state[i], state[i+1], state[i+2], state[i+9], state[i+10], state[i+11], state[i+18], state[i+19], state[i+20])
+	fmt.Printf("├───┼───┼───┤   ├───┼───┼───┤   ├───┼───┼───┤ \n")
+	i += 3
+	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", state[i], state[i+1], state[i+2], state[i+9], state[i+10], state[i+11], state[i+18], state[i+19], state[i+20])
+	fmt.Printf("├───┼───┼───┤   ├───┼───┼───┤   ├───┼───┼───┤ \n")
+	i += 3
+	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", state[i], state[i+1], state[i+2], state[i+9], state[i+10], state[i+11], state[i+18], state[i+19], state[i+20])
+	fmt.Printf("└───┴───┴───┘   └───┴───┴───┘   └───┴───┴───┘ \n")
+	print("\n")
+	fmt.Printf("┌───┬───┬───┐   ┌───┬───┬───┐   ┌───┬───┬───┐ \n")
+	i += 3
+	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", state[i], state[i+1], state[i+2], state[i+9], state[i+10], state[i+11], state[i+18], state[i+19], state[i+20])
+	fmt.Printf("├───┼───┼───┤   ├───┼───┼───┤   ├───┼───┼───┤ \n")
+	i += 3
+	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", state[i], state[i+1], state[i+2], state[i+9], state[i+10], state[i+11], state[i+18], state[i+19], state[i+20])
+	fmt.Printf("├───┼───┼───┤   ├───┼───┼───┤   ├───┼───┼───┤ \n")
+	i += 3
+	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", state[i], state[i+1], state[i+2], state[i+9], state[i+10], state[i+11], state[i+18], state[i+19], state[i+20])
+	fmt.Printf("└───┴───┴───┘   └───┴───┴───┘   └───┴───┴───┘ \n")
+	print("\n")
+	fmt.Printf("┌───┬───┬───┐   ┌───┬───┬───┐   ┌───┬───┬───┐ \n")
+	i += 3
+	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", state[i], state[i+1], state[i+2], state[i+9], state[i+10], state[i+11], state[i+18], state[i+19], state[i+20])
+	fmt.Printf("├───┼───┼───┤   ├───┼───┼───┤   ├───┼───┼───┤ \n")
+	i += 3
+	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", state[i], state[i+1], state[i+2], state[i+9], state[i+10], state[i+11], state[i+18], state[i+19], state[i+20])
+	fmt.Printf("├───┼───┼───┤   ├───┼───┼───┤   ├───┼───┼───┤ \n")
+	i += 3
+	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", state[i], state[i+1], state[i+2], state[i+9], state[i+10], state[i+11], state[i+18], state[i+19], state[i+20])
+	fmt.Printf("└───┴───┴───┘   └───┴───┴───┘   └───┴───┴───┘ \n")
 }

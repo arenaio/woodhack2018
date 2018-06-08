@@ -10,8 +10,8 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	ttt "github.com/arenaio/woodhack2018/tic-tac-toe"
-	"github.com/arenaio/woodhack2018/tic-tac-toe/proto"
+	ttt "github.com/arenaio/woodhack2018/ultimate-tic-tac-toe"
+	"github.com/arenaio/woodhack2018/ultimate-tic-tac-toe/proto"
 	"sync"
 	"flag"
 )
@@ -147,16 +147,34 @@ func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult,
 	}
 
 	if g.state[a.Move] != 0 {
-		log.Printf("player #%d tried to make an invalid move (%d)", a.Id, a.Move)
+		//log.Printf("player #%d tried to make an invalid move (%d)", a.Id, a.Move)
 		return &proto.StateResult{
-			Id:     a.Id,
-			State:  mapOutput(g.state, isFirstPlayer),
-			Result: ttt.InvalidMove,
+			Id:       a.Id,
+			State:    mapOutput(g.state, isFirstPlayer),
+			Result:   ttt.InvalidMove,
+			LastMove: g.lastMove,
 		}, nil
+	}
+
+	if g.lastMove > -1 {
+		subBoardStart := g.lastMove - g.lastMove%9
+		subBoardEnd := subBoardStart + 9
+
+		subState := g.state[subBoardStart:subBoardEnd]
+		if !isStateOver(subState) && (a.Move < subBoardStart || a.Move > subBoardEnd) {
+			//log.Printf("player #%d tried to make an invalid move (%d)", a.Id, a.Move)
+			return &proto.StateResult{
+				Id:       a.Id,
+				State:    mapOutput(g.state, isFirstPlayer),
+				Result:   ttt.InvalidMove,
+				LastMove: g.lastMove,
+			}, nil
+		}
 	}
 
 	g.state[a.Move] = g.turn
 	g.turn = 3 - g.turn
+	g.lastMove = a.Move
 
 	//log.Printf("Game had received move: %s", g)
 
@@ -164,19 +182,20 @@ func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult,
 		if isFirstPlayer {
 			s.stats[g.p1Name].won++
 			s.stats[g.p2Name].lost++
-			//log.Printf("Game %d is won by %s", gameId, g.p1Name)
+			log.Printf("Game %d is won by %s", gameId, g.p1Name)
 			g.Player1Done()
 		} else {
 			s.stats[g.p1Name].lost++
 			s.stats[g.p2Name].won++
-			//log.Printf("Game %d is won by %s", gameId, g.p2Name)
+			log.Printf("Game %d is won by %s", gameId, g.p2Name)
 			g.Player2Done()
 		}
 
 		return &proto.StateResult{
-			Id:     a.Id,
-			State:  mapOutput(g.state, a.Id == g.p1),
-			Result: ttt.Won,
+			Id:       a.Id,
+			State:    mapOutput(g.state, a.Id == g.p1),
+			Result:   ttt.Won,
+			LastMove: g.lastMove,
 		}, nil
 	}
 
@@ -189,9 +208,10 @@ func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult,
 		s.stats[g.p1Name].draw++
 		s.stats[g.p2Name].draw++
 		return &proto.StateResult{
-			Id:     a.Id,
-			State:  mapOutput(g.state, a.Id == g.p1),
-			Result: ttt.Draw,
+			Id:       a.Id,
+			State:    mapOutput(g.state, a.Id == g.p1),
+			Result:   ttt.Draw,
+			LastMove: g.lastMove,
 		}, nil
 	}
 
@@ -205,21 +225,22 @@ func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult,
 
 	result := ttt.ValidMove
 	if g.IsLost(a.Id) {
-		//if isFirstPlayer {
-		//	log.Printf("Game %d is lost for %s", gameId, g.p1Name)
-		//} else {
-		//	log.Printf("Game %d is lost for %s", gameId, g.p2Name)
-		//}
+		if isFirstPlayer {
+			log.Printf("Game %d is lost for %s", gameId, g.p1Name)
+		} else {
+			log.Printf("Game %d is lost for %s", gameId, g.p2Name)
+		}
 		result = ttt.Lost
 	} else if g.IsDraw() {
-		//log.Printf("Game %d is a draw", gameId)
+		log.Printf("Game %d is a draw", gameId)
 		result = ttt.Draw
 	}
 
 	return &proto.StateResult{
-		Id:     a.Id,
-		State:  mapOutput(g.state, a.Id == g.p1),
-		Result: result,
+		Id:       a.Id,
+		State:    mapOutput(g.state, a.Id == g.p1),
+		Result:   result,
+		LastMove: g.lastMove,
 	}, nil
 }
 
@@ -271,6 +292,11 @@ func (g Game) IsWon(pId int64) bool {
 		p = 2
 	}
 
+	subBoards := make([]int64, 9)
+	for i := 0; i < 9; i++ {
+		subBoards[i] = getSubResult(g.state[i*9:i*9+9])
+	}
+
 	places := [][]int64{
 		{0, 1, 2},
 		{3, 4, 5},
@@ -283,12 +309,23 @@ func (g Game) IsWon(pId int64) bool {
 	}
 
 	for _, ps := range places {
-		if p == g.state[ps[0]] && p == g.state[ps[1]] && p == g.state[ps[2]] {
+		if p == subBoards[ps[0]] && p == subBoards[ps[1]] && p == subBoards[ps[2]] {
 			return true
 		}
 	}
 
-	return false
+	wonBoards := []int64{0, 0, 0}
+	for _, result := range subBoards {
+		if result == 0 {
+			return false
+		}
+
+		if result > 0 {
+			wonBoards[result]++
+		}
+	}
+
+	return wonBoards[p] > wonBoards[3 - p]
 }
 
 func (g Game) IsLost(p int64) bool {
@@ -300,13 +337,54 @@ func (g Game) IsLost(p int64) bool {
 }
 
 func (g Game) IsDraw() bool {
-	for _, v := range g.state {
-		if v == 0 {
+	subBoards := make([]int64, 9)
+	for i := 0; i < 9; i++ {
+		subBoards[i] = getSubResult(g.state[i*9:i*9+9])
+	}
+
+	wonBoards := []int64{0, 0, 0}
+	for _, result := range subBoards {
+		if result == 0 {
 			return false
+		}
+
+		if result > 0 {
+			wonBoards[result]++
 		}
 	}
 
-	return true
+	return wonBoards[1] == wonBoards[2]
+}
+
+func isStateOver(state [] int64) bool {
+	return getSubResult(state) != 0
+}
+
+func getSubResult(state[] int64) int64 {
+	places := [][]int64{
+		{0, 1, 2},
+		{3, 4, 5},
+		{6, 7, 8},
+		{0, 4, 8},
+		{6, 4, 2},
+		{0, 3, 6},
+		{1, 4, 7},
+		{2, 5, 8},
+	}
+
+	for _, ps := range places {
+		if 0 != state[ps[0]] && state[ps[0]] == state[ps[1]] && state[ps[1]] == state[ps[2]] {
+			return state[ps[0]]
+		}
+	}
+
+	for _, v := range state {
+		if v == 0 {
+			return 0 // unfinished
+		}
+	}
+
+	return -1 // draw
 }
 
 func (g Game) isOver() bool {
