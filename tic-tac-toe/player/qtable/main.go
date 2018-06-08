@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log"
 	"math/rand"
+        "os"
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -27,6 +28,7 @@ func init() {
 func main() {
 	address := flag.String("address", ":8000", "server address")
 	name := flag.String("name", "Q-Table", "bot name")
+        file := flag.String("file", "", "File with Q-Table dataset.")
 	flag.Parse()
 
 	q := &Qlearning{
@@ -36,10 +38,17 @@ func main() {
 		DiscountFactor:  1,
 	}
 
+        if len(*file) > 0 {
+                log.Printf("Fetching from state file: %s", *file)
+                q.fetchFromFile(*file)
+                q.ExplorationRate = 0
+        }
+
 	for gameCount := 0; ; gameCount++ {
 		q.runGameOnServer(*address, *name)
 
-		if gameCount%100 == 0 {
+                log.Printf("Current ExplorationRate: %f", q.ExplorationRate)
+		if gameCount%1000 == 0 && q.ExplorationRate > 0 {
 			q.storeTable(gameCount)
 		}
 	}
@@ -59,6 +68,16 @@ func (q *Qlearning) storeTable(gameCount int) {
 	if err != nil {
 		log.Printf("Error storing table %d: %s", gameCount, err)
 	}
+}
+
+func (q *Qlearning) fetchFromFile(filePath string) {
+        raw, err := ioutil.ReadFile(filePath)
+        if err != nil {
+                log.Printf("Error loading state file: %s, %s", filePath, err)
+                os.Exit(1)
+        }
+
+        json.Unmarshal(raw, &q)
 }
 
 func hashState(state []int64) string {
@@ -115,7 +134,10 @@ func (q *Qlearning) runGameOnServer(address, name string) {
 			log.Fatal(err)
 		}
 
-		q.train(lastState, action, stateResult.State, stateResult.Result)
+                // don't train when the exploration rate is set to zero
+                if q.ExplorationRate > 0 {
+                        q.train(lastState, action, stateResult.State, stateResult.Result)
+                }
 
 		switch stateResult.Result {
 		case ttt.InvalidMove:
