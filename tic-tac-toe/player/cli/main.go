@@ -1,19 +1,23 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 
+	"flag"
+
 	ttt "github.com/arenaio/woodhack2018/tic-tac-toe"
 	"github.com/arenaio/woodhack2018/tic-tac-toe/proto"
-	term "github.com/nsf/termbox-go"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 
 func main() {
-	defer term.Close()
+	name := flag.String("name", "CLI", "your name")
+	flag.Parse()
 
+	// player1Char := "X"
+	// player2Char := "O"
 	positionXOld := 1
 	positionYOld := 1
 	positionX := 1
@@ -24,10 +28,10 @@ func main() {
 			return " "
 		}
 		if field == 1 {
-			return "\033[0;34m🗙\033[0m"
+			return "\033[0;34mX\033[0m"
 		}
 		if field == -1 {
-			return "\033[0;32m🞆\033[0m"
+			return "\033[0;32mO\033[0m"
 		}
 		panic("INVALID FIELD VALUE RECEIVED")
 	}
@@ -49,7 +53,18 @@ func main() {
 		fmt.Printf("│ %s │ %s │ %s │\n", parseField(state[6]), parseField(state[7]), parseField(state[8]))
 		fmt.Printf("└───┴───┴───┘")
 		goTo(positionX, positionY) // draw input brackets
-		fmt.Printf("\033[8;0H => Your turn       ")
+		fmt.Printf("\033[8;0H => Your turn           ")
+	}
+
+	drawFinalState := func(state []int64, message string) {
+		fmt.Printf("┌───┬───┬───┐\n")
+		fmt.Printf("│ %s │ %s │ %s │\n", parseField(state[0]), parseField(state[1]), parseField(state[2]))
+		fmt.Printf("├───┼───┼───┤\n")
+		fmt.Printf("│ %s │ %s │ %s │\n", parseField(state[3]), parseField(state[4]), parseField(state[5]))
+		fmt.Printf("├───┼───┼───┤\n")
+		fmt.Printf("│ %s │ %s │ %s │\n", parseField(state[6]), parseField(state[7]), parseField(state[8]))
+		fmt.Printf("└───┴───┴───┘\n")
+		fmt.Println("  ", message)
 	}
 
 	address := ":8000"
@@ -62,7 +77,7 @@ func main() {
 	client := proto.NewTicTacToeClient(conn)
 
 	ctx := context.Background()
-	stateResult, err := client.NewGame(ctx, &proto.New{GameType: ttt.RegularTicTacToe, Name: "CLI"})
+	stateResult, err := client.NewGame(ctx, &proto.New{GameType: ttt.RegularTicTacToe, Name: *name})
 	id := stateResult.Id
 
 	termErr := term.Init()
@@ -77,6 +92,7 @@ keyPressListenerLoop:
 		case term.EventKey:
 			switch ev.Key {
 			case term.KeyEsc:
+				term.Close()
 				break keyPressListenerLoop
 			case term.KeyArrowUp:
 				if positionX > 1 {
@@ -100,11 +116,30 @@ keyPressListenerLoop:
 				}
 			case term.KeySpace:
 				// undraw input brackets and place X in orange
-				fmt.Printf("\033[0;94m\033[%v;%vH 🗙 \033[0m", positionX*2, positionY*4-2)
-				fmt.Printf("\033[8;0H => Enemies turn       ")
+				fmt.Printf("\033[0;94m\033[%v;%vH X \033[0m", positionX*2, positionY*4-2)
+				fmt.Printf("\033[8;0H => Enemies turn           ")
 				moveTarget := (positionX-1)*3 + positionY - 1
 				stateResult, err = client.Move(ctx, &proto.Action{Id: id, Move: int64(moveTarget)})
-				drawState(stateResult.State)
+				switch stateResult.Result {
+				case ttt.InvalidMove:
+					drawState(stateResult.State)
+					fmt.Printf("\033[8;0H => Invalid Move, Your turn           ")
+				case ttt.Won:
+					term.Close()
+					drawFinalState(stateResult.State, "You Won")
+					break keyPressListenerLoop
+				case ttt.Lost:
+					term.Close()
+					drawFinalState(stateResult.State, "You Lost")
+					break keyPressListenerLoop
+				case ttt.Draw:
+					term.Close()
+					break keyPressListenerLoop
+					drawFinalState(stateResult.State, "Game Draw")
+				default:
+					// valid move
+					drawState(stateResult.State)
+				}
 			}
 		case term.EventError:
 			panic(ev.Err)
