@@ -1,12 +1,14 @@
 package main
+
 import (
 	"fmt"
 	"log"
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
-	term "github.com/nsf/termbox-go"
+
 	ttt "github.com/arenaio/woodhack2018/tic-tac-toe"
 	"github.com/arenaio/woodhack2018/tic-tac-toe/proto"
+	term "github.com/nsf/termbox-go"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 func main() {
@@ -17,22 +19,28 @@ func main() {
 	positionX := 1
 	positionY := 1
 
-	parseField := func (field int64) string {
-		if field == 0 {return " "}
-		if field == 1 {return "\033[0;34m🗙\033[0m"}
-		if field == -1 {return "\033[0;32m🞆\033[0m"}
+	parseField := func(field int64) string {
+		if field == 0 {
+			return " "
+		}
+		if field == 1 {
+			return "\033[0;34m🗙\033[0m"
+		}
+		if field == -1 {
+			return "\033[0;32m🞆\033[0m"
+		}
 		panic("INVALID FIELD VALUE RECEIVED")
 	}
 
-	goTo := func (x int, y int) {
+	goTo := func(x int, y int) {
 		fmt.Printf("\033[%v;%vH \033[%v;%vH ", positionXOld*2, positionYOld*4-2, positionXOld*2, positionYOld*4)
 		positionXOld = positionX
 		positionYOld = positionY
 		fmt.Printf("\033[0;31m\033[%v;%vH[\033[%v;%vH]\033[0m", x*2, y*4-2, x*2, y*4)
 	}
 
-	drawState := func (state []int64) {
-		fmt.Printf("\033[0;0H")	// go to pos 0/0
+	drawState := func(state []int64) {
+		fmt.Printf("\033[0;0H") // go to pos 0/0
 		fmt.Printf("┌───┬───┬───┐\n")
 		fmt.Printf("│ %s │ %s │ %s │\n", parseField(state[0]), parseField(state[1]), parseField(state[2]))
 		fmt.Printf("├───┼───┼───┤\n")
@@ -55,15 +63,15 @@ func main() {
 
 	ctx := context.Background()
 	stateResult, err := client.NewGame(ctx, &proto.New{GameType: ttt.RegularTicTacToe, Name: "CLI"})
- 	id := stateResult.Id
+	id := stateResult.Id
 
 	termErr := term.Init()
 	if termErr != nil {
-			panic(termErr)
+		panic(termErr)
 	}
 	drawState(stateResult.State)
 
-	keyPressListenerLoop:
+keyPressListenerLoop:
 	for {
 		switch ev := term.PollEvent(); ev.Type {
 		case term.EventKey:
@@ -73,28 +81,28 @@ func main() {
 			case term.KeyArrowUp:
 				if positionX > 1 {
 					positionX--
-					goTo (positionX, positionY)
+					goTo(positionX, positionY)
 				}
 			case term.KeyArrowDown:
 				if positionX < 3 {
 					positionX++
-					goTo (positionX, positionY)
+					goTo(positionX, positionY)
 				}
 			case term.KeyArrowLeft:
 				if positionY > 1 {
 					positionY--
-					goTo (positionX, positionY)
+					goTo(positionX, positionY)
 				}
 			case term.KeyArrowRight:
 				if positionY < 3 {
 					positionY++
-					goTo (positionX, positionY)
+					goTo(positionX, positionY)
 				}
 			case term.KeySpace:
 				// undraw input brackets and place X in orange
 				fmt.Printf("\033[0;94m\033[%v;%vH 🗙 \033[0m", positionX*2, positionY*4-2)
 				fmt.Printf("\033[8;0H => Enemies turn       ")
-				moveTarget := (positionX-1)*3 + positionY -1
+				moveTarget := (positionX-1)*3 + positionY - 1
 				stateResult, err = client.Move(ctx, &proto.Action{Id: id, Move: int64(moveTarget)})
 				drawState(stateResult.State)
 			}

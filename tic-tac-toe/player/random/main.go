@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"math/rand"
 	"time"
@@ -13,6 +14,8 @@ import (
 )
 
 var r *rand.Rand
+var clientType int
+var clientName string
 
 func init() {
 	r = rand.New(rand.NewSource(199))
@@ -20,6 +23,21 @@ func init() {
 
 func main() {
 	address := ":8000"
+
+	clientTypePtr := flag.Int("type", 1, "an int")
+
+	flag.Parse()
+
+	clientType = *clientTypePtr
+
+	switch clientType {
+	case 1:
+		clientName = "Random"
+	case 2:
+		clientName = "Random without invalid"
+	case 3:
+		clientName = "Random with clever moves"
+	}
 
 	for {
 		runGameOnServer(address)
@@ -34,7 +52,7 @@ func runGameOnServer(address string) {
 	defer conn.Close()
 	client := proto.NewTicTacToeClient(conn)
 	ctx := context.Background()
-	stateResult, err := client.NewGame(ctx, &proto.New{GameType: ttt.RegularTicTacToe, Name: "Random"})
+	stateResult, err := client.NewGame(ctx, &proto.New{GameType: ttt.RegularTicTacToe, Name: clientName})
 	id := stateResult.Id
 	ongoingGame := true
 	turnCount := 0
@@ -79,22 +97,72 @@ func runGameOnServer(address string) {
 }
 
 func makeMove(state []int64) int64 {
-	// Fully random
-	// moveTarget := r.Int63n(int64(len(state)))
-	// Randomly select valid targets
-	validTargets := getValidTargets(state)
-	moveTarget := validTargets[r.Int63n(int64(len(validTargets)))]
-	return moveTarget
+	var moveTarget int
+	switch clientType {
+	case 1:
+		// Fully random
+		moveTarget = r.Intn(len(state))
+	case 2:
+		// Randomly select valid targets
+		validTargets := getValidTargets(state)
+		moveTarget = validTargets[r.Intn(len(validTargets))]
+	case 3:
+		// select winning targets
+		cleverTargets := getCleverTargets(state)
+		if len(cleverTargets) > 0 {
+			moveTarget = cleverTargets[r.Intn(len(cleverTargets))]
+		} else {
+			validTargets := getValidTargets(state)
+			moveTarget = validTargets[r.Intn(len(validTargets))]
+		}
+	}
+
+	return int64(moveTarget)
 }
 
-func getValidTargets(state []int64) []int64 {
-	tmp := make([]int64, 0)
+func getValidTargets(state []int64) []int {
+	tmp := make([]int, 0)
 	for i, v := range state {
 		if v == 0 {
-			tmp = append(tmp, int64(i))
+			tmp = append(tmp, i)
 		}
 	}
 	return tmp
+}
+
+func getCleverTargets(state []int64) []int {
+	tmp := make([]int, 0)
+	for i, v := range state {
+		if v == 0 && wouldMoveEndGame(state, i) {
+			tmp = append(tmp, i)
+		}
+	}
+	return tmp
+}
+
+func wouldMoveEndGame(state []int64, position int) bool {
+	switch true {
+	case position == 0 && state[1] == state[2],
+		position == 1 && state[0] == state[2],
+		position == 2 && state[0] == state[1],
+		position == 3 && state[4] == state[5],
+		position == 4 && state[3] == state[5],
+		position == 5 && state[3] == state[4],
+		position == 6 && state[7] == state[8],
+		position == 7 && state[6] == state[8],
+		position == 8 && state[6] == state[7],
+		position == 0 && state[4] == state[8],
+		position == 2 && state[4] == state[6],
+		position == 4 && state[0] == state[8],
+		position == 4 && state[2] == state[6],
+		position == 6 && state[4] == state[2],
+		position == 8 && state[0] == state[4],
+		position < 3 && state[position+3] == state[position+6],
+		position >= 3 && position < 6 && state[position+3] == state[position-3],
+		position >= 6 && state[position-3] == state[position-6]:
+		return true
+	}
+	return false
 }
 
 func displayState(state []int64) {
