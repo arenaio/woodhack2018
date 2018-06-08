@@ -59,10 +59,10 @@ func main() {
 		// state size? assuming 81 for now
 		moveTarget := r.Int63n(int64(fieldCount))
 		print("\nMoving to: ", moveTarget, "\n")
-		stateResult, err := client.Move(ctx, &proto.Action{Id: id, Move: moveTarget})
+		stateResult, err = client.Move(ctx, &proto.Action{Id: id, Move: moveTarget})
 
-		if stateResult != nil && err == nil {
-			stateResult = nil
+		if err != nil {
+			log.Fatal(err)
 		}
 		time.Sleep(1000 * time.Millisecond)
 	}

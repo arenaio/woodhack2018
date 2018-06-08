@@ -25,7 +25,7 @@ func main() {
 	parseField := func (field int64) string {
 		if field == 0 {return " "}
 		if field == 1 {return "\033[0;34mX\033[0m"}
-		if field == 2 {return "\033[0;32mO\033[0m"}
+		if field == -1 {return "\033[0;32mO\033[0m"}
 		panic("EINVALID VALUE RECEIVED")
 	}
 	goTo := func (x int, y int) {
