@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package proto;
+
+service TicTacToe {
+    rpc NewGame(New) returns (StateResult) {}
+    rpc Move(Action) returns (StateResult) {}
+}
+
+message New {
+    int64 gameType = 1;
+    string name = 2;
+}
+
+message StateResult {
+    int64 id = 1;
+    repeated int64 state = 2;
+    int64 result = 3;
+    int64 lastMove = 4;
+}
+
+message Action {
+    int64 id = 1;
+    int64 move = 2;
+}
