@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"math/rand"
+	"time"
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -35,27 +36,43 @@ func main() {
 		switch stateResult.Result {
 		case ttt.InvalidMove:
 			// invalid move
+			print("Made an illegal move\n")
 			break
 		case ttt.Won:
 			// game won
+			print("Won the game!\n")
 			ongoingGame = false
 			break
 		case ttt.Lost:
+			print("Lost the game!\n")
 			// game lost
 			ongoingGame = false
 			break
 		default:
 			// valid move
+			turnCount++
+			displayState(stateResult.State)
 		}
 		if !ongoingGame || turnCount > fieldCount {
 			break
 		}
-		turnCount++
 		// state size? assuming 81 for now
-		stateResult, err := client.Move(ctx, &proto.Action{Id: id, Move: r.Int63n(int64(fieldCount))})
+		moveTarget := r.Int63n(int64(fieldCount))
+		print("\nMoving to: ", moveTarget, "\n")
+		stateResult, err := client.Move(ctx, &proto.Action{Id: id, Move: moveTarget})
 
 		if stateResult != nil && err == nil {
 			stateResult = nil
+		}
+		time.Sleep(1000 * time.Millisecond)
+	}
+}
+
+func displayState(state []int64) {
+	for index, element := range state {
+		print(" ", element, " ")
+		if (index+1)%3 == 0 {
+			print("\n")
 		}
 	}
 }
