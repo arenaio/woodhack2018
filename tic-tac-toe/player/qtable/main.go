@@ -36,6 +36,7 @@ func main() {
 		ExplorationRate: 1,
 		LearningRate:    0.001,
 		DiscountFactor:  1,
+                Epoches:         0,
 	}
 
         if len(*file) > 0 {
@@ -45,10 +46,17 @@ func main() {
         }
 
 	for gameCount := 0; ; gameCount++ {
+                log.Printf("Current Epoche: %d", q.Epoches)
 		q.runGameOnServer(*address, *name)
 
-                log.Printf("Current ExplorationRate: %f", q.ExplorationRate)
+                // read the epoches if set
+                if q.Epoches > 0 && gameCount == 0 {
+                        gameCount = q.Epoches
+                }
+
 		if gameCount%1000 == 0 && q.ExplorationRate > 0 {
+
+                        q.Epoches = gameCount/1000
 			q.storeTable(gameCount)
 		}
 	}
@@ -59,6 +67,7 @@ type Qlearning struct {
 	ExplorationRate float64                      `json:"ExplorationRate"`
 	LearningRate    float64                      `json:"LearningRate"`
 	DiscountFactor  float64                      `json:"DiscountFactor"`
+        Epoches         int                          `json:"Epoches"`
 }
 
 func (q *Qlearning) storeTable(gameCount int) {
@@ -102,7 +111,7 @@ func (q *Qlearning) train(lastState []int64, action int64, futureState []int64, 
 	learnedValue := float64(reward) + q.DiscountFactor*estimatedOptimalFuture
 	actionTable[action] = (1-q.LearningRate)*actionTable[action] + q.LearningRate*learnedValue
 
-	q.ExplorationRate *= 0.99
+	q.ExplorationRate *= 0.999999
 }
 
 func (q *Qlearning) runGameOnServer(address, name string) {
@@ -179,18 +188,18 @@ func (q *Qlearning) makeMove(state []int64) int64 {
 	actionTable := q.getActionTable(state)
 
 	displayState(state)
-	log.Printf(
-		"%.4f %.4f %.4f\n%.4f %.4f %.4f\n%.4f %.4f %.4f",
-		actionTable[0],
-		actionTable[1],
-		actionTable[2],
-		actionTable[3],
-		actionTable[4],
-		actionTable[5],
-		actionTable[6],
-		actionTable[7],
-		actionTable[8],
-	)
+	// log.Printf(
+		// "%.4f %.4f %.4f\n%.4f %.4f %.4f\n%.4f %.4f %.4f",
+		// actionTable[0],
+		// actionTable[1],
+		// actionTable[2],
+		// actionTable[3],
+		// actionTable[4],
+		// actionTable[5],
+		// actionTable[6],
+		// actionTable[7],
+		// actionTable[8],
+	// )
 
 	if r.Float64() < q.ExplorationRate {
 		log.Printf("Explore (%.2f)", q.ExplorationRate)
@@ -201,7 +210,7 @@ func (q *Qlearning) makeMove(state []int64) int64 {
 	bestMove := int64(-1)
 	bestValue := -math.MaxFloat64
 	for action, value := range actionTable {
-		log.Printf("current: %f, best: %f, action: %d, best: %d", value, bestValue, action, bestMove)
+		// log.Printf("current: %f, best: %f, action: %d, best: %d", value, bestValue, action, bestMove)
 		if value > bestValue {
 			bestValue = value
 			bestMove = action
