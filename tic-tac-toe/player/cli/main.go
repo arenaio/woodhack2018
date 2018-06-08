@@ -7,9 +7,13 @@ import (
 	term "github.com/nsf/termbox-go"
 	ttt "github.com/arenaio/woodhack2018/tic-tac-toe"
 	"github.com/arenaio/woodhack2018/tic-tac-toe/proto"
+	"flag"
 )
 
 func main() {
+	name := flag.String("name", "CLI", "your name")
+	flag.Parse()
+
 	// player1Char := "X"
 	// player2Char := "O"
 	positionXOld := 1
@@ -65,7 +69,7 @@ func main() {
 	client := proto.NewTicTacToeClient(conn)
 
 	ctx := context.Background()
-	stateResult, err := client.NewGame(ctx, &proto.New{GameType: ttt.RegularTicTacToe, Name: "CLI"})
+	stateResult, err := client.NewGame(ctx, &proto.New{GameType: ttt.RegularTicTacToe, Name: *name})
  	id := stateResult.Id
 
 	termErr := term.Init()

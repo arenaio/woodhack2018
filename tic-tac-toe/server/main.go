@@ -33,12 +33,14 @@ type Server struct {
 	games        map[int64]*Game
 	m            sync.Mutex
 	nextPlayerId int64
+	stats        map[string]*Stats
 	//ultimateGames map[int64]*Game
 }
 
 func NewServer() *Server {
 	return &Server{
 		games: make(map[int64]*Game),
+		stats: make(map[string]*Stats),
 	}
 }
 
@@ -48,6 +50,22 @@ func (s Server) String() string {
 		games[i] = g.String()
 	}
 	return strings.Join(games, "\n")
+}
+
+func (s Server) getStats() string {
+	stats := []string{"Current Standing"}
+	for name, stat := range s.stats {
+		stats = append(stats, fmt.Sprintf(
+			"%s\t%.0f%% (%d / %d / %d)",
+			name,
+			float64(stat.won) / float64(stat.won + stat.draw + stat.lost) * 100,
+			stat.won,
+			stat.draw,
+			stat.lost,
+		))
+	}
+
+	return strings.Join(stats, "\n")
 }
 
 func (s *Server) NewGame(ctx context.Context, new *proto.New) (*proto.StateResult, error) {
@@ -65,22 +83,29 @@ func (s *Server) NewGame(ctx context.Context, new *proto.New) (*proto.StateResul
 	}
 
 	s.m.Lock()
+	_, found := s.stats[new.Name]
+	if !found {
+		s.stats[new.Name] = &Stats{}
+	}
+
 	playerId := s.nextPlayerId
 
 	var g *Game
 	var ok bool
 	if playerId%2 == 0 {
+		log.Print(s.getStats())
+
 		g = &Game{
-			p1:    playerId,
+			p1:     playerId,
 			p1Name: new.Name,
-			p2:    -1,
-			state: make([]int64, 9),
-			turn:  1,
-			d1:    make(chan struct{}),
-			d2:    make(chan struct{}),
+			p2:     -1,
+			state:  make([]int64, 9),
+			turn:   1,
+			d1:     make(chan struct{}),
+			d2:     make(chan struct{}),
 		}
 		s.games[playerId/2] = g
-		log.Printf("new game created: %s", g)
+		//log.Printf("new game created: %s", g)
 	} else {
 		//log.Printf("trying to join game: %d", (playerId-1)/2)
 		g, ok = s.games[(playerId-1)/2]
@@ -146,12 +171,17 @@ func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult,
 
 	if g.IsWon(a.Id) {
 		if isFirstPlayer {
-			log.Printf("Game %d is won by %s", gameId, g.p1Name)
+			s.stats[g.p1Name].won++
+			s.stats[g.p2Name].lost++
+			//log.Printf("Game %d is won by %s", gameId, g.p1Name)
 			g.Player1Done()
 		} else {
-			log.Printf("Game %d is won by %s", gameId, g.p2Name)
+			s.stats[g.p1Name].lost++
+			s.stats[g.p2Name].won++
+			//log.Printf("Game %d is won by %s", gameId, g.p2Name)
 			g.Player2Done()
 		}
+
 		return &proto.StateResult{
 			Id:     a.Id,
 			State:  mapOutput(g.state, a.Id == g.p1),
@@ -165,6 +195,8 @@ func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult,
 		} else {
 			g.Player2Done()
 		}
+		s.stats[g.p1Name].draw++
+		s.stats[g.p2Name].draw++
 		return &proto.StateResult{
 			Id:     a.Id,
 			State:  mapOutput(g.state, a.Id == g.p1),
@@ -182,14 +214,14 @@ func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult,
 
 	result := ttt.ValidMove
 	if g.IsLost(a.Id) {
-		if isFirstPlayer {
-			log.Printf("Game %d is lost for %s", gameId, g.p1Name)
-		} else {
-			log.Printf("Game %d is lost for %s", gameId, g.p2Name)
-		}
+		//if isFirstPlayer {
+		//	log.Printf("Game %d is lost for %s", gameId, g.p1Name)
+		//} else {
+		//	log.Printf("Game %d is lost for %s", gameId, g.p2Name)
+		//}
 		result = ttt.Lost
 	} else if g.IsDraw() {
-		log.Printf("Game %d is a draw", gameId)
+		//log.Printf("Game %d is a draw", gameId)
 		result = ttt.Draw
 	}
 
@@ -303,4 +335,10 @@ func (g Game) WaitForPlayer1() {
 
 func (g Game) WaitForPlayer2() {
 	<-g.d2
+}
+
+type Stats struct {
+	won  int64
+	lost int64
+	draw int64
 }

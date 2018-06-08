@@ -3,8 +3,6 @@ package main
 import (
 	"log"
 	"math/rand"
-	"time"
-
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -34,6 +32,7 @@ func runGameOnServer(address string) {
 	defer conn.Close()
 	client := proto.NewTicTacToeClient(conn)
 	ctx := context.Background()
+	log.Print("Starting new game")
 	stateResult, err := client.NewGame(ctx, &proto.New{GameType: ttt.RegularTicTacToe, Name: "Random"})
 	id := stateResult.Id
 	ongoingGame := true
@@ -63,7 +62,9 @@ func runGameOnServer(address string) {
 			turnCount++
 			displayState(stateResult.State)
 		}
+
 		if !ongoingGame || turnCount > fieldCount {
+			displayState(stateResult.State)
 			break
 		}
 
@@ -74,7 +75,7 @@ func runGameOnServer(address string) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		time.Sleep(100 * time.Millisecond)
+		//time.Sleep(100 * time.Millisecond)
 	}
 }
 
