@@ -1,9 +1,10 @@
 package tic_tac_toe
 
-const InvalidMove = -2
-const Lost = -1
-const ValidMove = 0
-const Won = 1
+const InvalidMove int64 = -2
+const Lost int64 = -1
+const ValidMove int64 = 0
+const Draw int64 = 1
+const Won int64 = 2
 
-const RegularTicTacToe = 0
-const UltimateTicTacToe = 1
+const RegularTicTacToe int64 = 0
+const UltimateTicTacToe int64 = 1

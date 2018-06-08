@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"net"
 
 	"golang.org/x/net/context"
@@ -11,8 +12,6 @@ import (
 
 	ttt "github.com/arenaio/woodhack2018/tic-tac-toe"
 	"github.com/arenaio/woodhack2018/tic-tac-toe/proto"
-	"strings"
-	"sync"
 )
 
 func main() {
@@ -91,8 +90,6 @@ func (s *Server) NewGame(ctx context.Context, new *proto.New) (*proto.StateResul
 
 	s.nextPlayerId++
 
-	log.Printf("xXXXX: %s", g)
-
 	return &proto.StateResult{
 		Id:     playerId,
 		State:  mapOutput(g.state, playerId == g.p1),
@@ -109,7 +106,10 @@ func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult,
 	}
 
 	log.Printf("game found: %s", g)
-	//g.m.Lock()
+
+	if g.IsDraw() || g.IsWon(g.p1) || g.IsWon(g.p2) {
+		return nil, errors.New("game is already over")
+	}
 
 	if (g.turn == 1 && a.Id != g.p1) || (g.turn == 2 && a.Id != g.p2) {
 		return nil, errors.New("it's not your turn")
@@ -126,7 +126,31 @@ func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult,
 	g.state[a.Move] = g.turn
 	g.turn = 3 - g.turn
 
-	//g.m.Unlock()
+	if g.IsWon(g.p1) {
+		if a.Id == g.p1 {
+			g.d2 <- struct{}{}
+		} else {
+			g.d1 <- struct{}{}
+		}
+		return &proto.StateResult{
+			Id:     a.Id,
+			State:  mapOutput(g.state, a.Id == g.p1),
+			Result: ttt.Won,
+		}, nil
+	}
+
+	if g.IsDraw() {
+		if a.Id == g.p1 {
+			g.d2 <- struct{}{}
+		} else {
+			g.d1 <- struct{}{}
+		}
+		return &proto.StateResult{
+			Id:     a.Id,
+			State:  mapOutput(g.state, a.Id == g.p1),
+			Result: ttt.Draw,
+		}, nil
+	}
 
 	if a.Id == g.p1 {
 		g.d1 <- struct{}{} // player 1 done
@@ -136,10 +160,23 @@ func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult,
 		<-g.d1
 	}
 
+	result := ttt.ValidMove
+	if g.IsDraw() {
+		result = ttt.Draw
+	}
+
+	if g.IsWon(a.Id) {
+		result = ttt.Won
+	}
+
+	if g.IsLost(a.Id) {
+		result = ttt.Lost
+	}
+
 	return &proto.StateResult{
 		Id:     a.Id,
 		State:  mapOutput(g.state, a.Id == g.p1),
-		Result: ttt.ValidMove,
+		Result: result,
 	}, nil
 }
 
@@ -162,7 +199,6 @@ func mapOutput(state []int64, p1Active bool) []int64 {
 type Game struct {
 	p1, p2 int64
 	d1, d2 chan struct{}
-	m      *sync.Mutex
 	state  []int64
 	turn   int64
 }
@@ -180,4 +216,43 @@ func (g Game) String() string {
 		"Game #%d: %d vs. %d\n%sturn: %d",
 		g.p1/2, g.p1, g.p2, state, g.turn,
 	)
+}
+
+func (g Game) IsWon(p int64) bool {
+	places := [][]int64{
+		{0, 1, 2},
+		{3, 4, 5},
+		{6, 7, 8},
+		{0, 4, 8},
+		{6, 4, 2},
+		{0, 3, 6},
+		{1, 4, 7},
+		{2, 5, 8},
+	}
+
+	for _, ps := range places {
+		if p == ps[0] && ps[0] == ps[1] && ps[1] == ps[2] {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (g Game) IsLost(p int64) bool {
+	if g.p1 == p {
+		return g.IsWon(g.p2)
+	} else {
+		return g.IsWon(g.p1)
+	}
+}
+
+func (g Game) IsDraw() bool {
+	for _, v := range g.state {
+		if v == 0 {
+			return false
+		}
+	}
+
+	return true
 }
