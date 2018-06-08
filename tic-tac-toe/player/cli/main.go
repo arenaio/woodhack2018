@@ -2,32 +2,28 @@ package main
 import (
 	"fmt"
 	"log"
-
-	term "github.com/nsf/termbox-go"
-
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-
+	term "github.com/nsf/termbox-go"
 	ttt "github.com/arenaio/woodhack2018/tic-tac-toe"
 	"github.com/arenaio/woodhack2018/tic-tac-toe/proto"
 )
 
-func reset() {
-    term.Sync() // cosmestic purpose
-}
-
-var positionXOld int = 1
-var positionYOld int = 1
-var positionX int = 1
-var positionY int = 1
-
 func main() {
+	defer term.Close()
+
+	positionXOld := 1
+	positionYOld := 1
+	positionX := 1
+	positionY := 1
+
 	parseField := func (field int64) string {
 		if field == 0 {return " "}
-		if field == 1 {return "\033[0;34mX\033[0m"}
-		if field == -1 {return "\033[0;32mO\033[0m"}
-		panic("EINVALID VALUE RECEIVED")
+		if field == 1 {return "\033[0;34m🗙\033[0m"}
+		if field == -1 {return "\033[0;32m🞆\033[0m"}
+		panic("INVALID FIELD VALUE RECEIVED")
 	}
+
 	goTo := func (x int, y int) {
 		fmt.Printf("\033[%v;%vH \033[%v;%vH ", positionXOld*2, positionYOld*4-2, positionXOld*2, positionYOld*4)
 		positionXOld = positionX
@@ -36,8 +32,7 @@ func main() {
 	}
 
 	drawState := func (state []int64) {
-		// go to pos 0/0
-		fmt.Printf("\033[0;0H")
+		fmt.Printf("\033[0;0H")	// go to pos 0/0
 		fmt.Printf("┌───┬───┬───┐\n")
 		fmt.Printf("│ %s │ %s │ %s │\n", parseField(state[0]), parseField(state[1]), parseField(state[2]))
 		fmt.Printf("├───┼───┼───┤\n")
@@ -45,13 +40,11 @@ func main() {
 		fmt.Printf("├───┼───┼───┤\n")
 		fmt.Printf("│ %s │ %s │ %s │\n", parseField(state[6]), parseField(state[7]), parseField(state[8]))
 		fmt.Printf("└───┴───┴───┘")
-		goTo(positionX, positionY)
+		goTo(positionX, positionY) // draw input brackets
+		fmt.Printf("\033[8;0H => Your turn       ")
 	}
 
-
-	goTo(positionX, positionY)
 	address := ":8000"
-
 	conn, err := grpc.Dial(address, grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("unable to connect on port %s: %v", address, err)
@@ -70,8 +63,6 @@ func main() {
 	}
 	drawState(stateResult.State)
 
-
-	defer term.Close()
 	keyPressListenerLoop:
 	for {
 		switch ev := term.PollEvent(); ev.Type {
@@ -80,31 +71,29 @@ func main() {
 			case term.KeyEsc:
 				break keyPressListenerLoop
 			case term.KeyArrowUp:
-				fmt.Printf("\033[10;0H => Arrow Up pressed       ")
 				if positionX > 1 {
 					positionX--
 					goTo (positionX, positionY)
 				}
 			case term.KeyArrowDown:
-				fmt.Printf("\033[10;0H => Arrow Down pressed       ")
 				if positionX < 3 {
 					positionX++
 					goTo (positionX, positionY)
 				}
 			case term.KeyArrowLeft:
-				fmt.Printf("\033[10;0H => Arrow Left pressed       ")
 				if positionY > 1 {
 					positionY--
 					goTo (positionX, positionY)
 				}
 			case term.KeyArrowRight:
-				fmt.Printf("\033[10;0H => Arrow Right pressed       ")
 				if positionY < 3 {
 					positionY++
 					goTo (positionX, positionY)
 				}
 			case term.KeySpace:
-				fmt.Printf("\033[10;0H => Space pressed       ")
+				// undraw input brackets and place X in orange
+				fmt.Printf("\033[0;94m\033[%v;%vH 🗙 \033[0m", positionX*2, positionY*4-2)
+				fmt.Printf("\033[8;0H => Enemies turn       ")
 				moveTarget := (positionX-1)*3 + positionY -1
 				stateResult, err = client.Move(ctx, &proto.Action{Id: id, Move: int64(moveTarget)})
 				drawState(stateResult.State)
