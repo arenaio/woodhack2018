@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"flag"
+	term "github.com/nsf/termbox-go"
 
 	ttt "github.com/arenaio/woodhack2018/tic-tac-toe"
 	"github.com/arenaio/woodhack2018/tic-tac-toe/proto"
@@ -14,6 +15,7 @@ import (
 
 func main() {
 	name := flag.String("name", "CLI", "your name")
+	address := flag.String("address", ":8000", "server address")
 	flag.Parse()
 
 	// player1Char := "X"
@@ -67,10 +69,9 @@ func main() {
 		fmt.Println("  ", message)
 	}
 
-	address := ":8000"
-	conn, err := grpc.Dial(address, grpc.WithInsecure())
+	conn, err := grpc.Dial(*address, grpc.WithInsecure())
 	if err != nil {
-		log.Fatalf("unable to connect on port %s: %v", address, err)
+		log.Fatalf("unable to connect on port %s: %v", *address, err)
 	}
 	defer conn.Close()
 

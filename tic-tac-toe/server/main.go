@@ -13,19 +13,21 @@ import (
 	ttt "github.com/arenaio/woodhack2018/tic-tac-toe"
 	"github.com/arenaio/woodhack2018/tic-tac-toe/proto"
 	"sync"
+	"flag"
 )
 
 func main() {
-	address := ":8000"
+	address := flag.String("address", ":8000", "server address")
+	flag.Parse()
 
-	listener, err := net.Listen("tcp", address)
+	listener, err := net.Listen("tcp", *address)
 	if err != nil {
-		log.Fatalf("unable to listen on port %s: %v", address, err)
+		log.Fatalf("unable to listen on port %s: %v", *address, err)
 	}
 
 	srv := grpc.NewServer()
 	proto.RegisterTicTacToeServer(srv, NewServer())
-	log.Printf("listening on %s", address)
+	log.Printf("listening on %s", *address)
 	log.Print(srv.Serve(listener))
 }
 

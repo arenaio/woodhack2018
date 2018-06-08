@@ -21,10 +21,8 @@ func init() {
 }
 
 func main() {
-	address := ":8000"
-
 	clientTypePtr := flag.Int("type", 1, "an int")
-
+	address := flag.String("address", ":8000", "server address")
 	flag.Parse()
 
 	clientType = *clientTypePtr
@@ -39,7 +37,7 @@ func main() {
 	}
 
 	for {
-		runGameOnServer(address)
+		runGameOnServer(*address)
 	}
 }
 
