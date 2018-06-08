@@ -41,7 +41,7 @@ func main() {
 		fmt.Printf("│ %s │ %s │ %s │\n", parseField(state[6]), parseField(state[7]), parseField(state[8]))
 		fmt.Printf("└───┴───┴───┘")
 		goTo(positionX, positionY) // draw input brackets
-		fmt.Printf("\033[8;0H => Your turn       ")
+		fmt.Printf("\033[8;0H => Your turn           ")
 	}
 
 	drawFinalState := func (state []int64, message string) {
@@ -105,14 +105,13 @@ func main() {
 			case term.KeySpace:
 				// undraw input brackets and place X in orange
 				fmt.Printf("\033[0;94m\033[%v;%vH X \033[0m", positionX*2, positionY*4-2)
-				fmt.Printf("\033[8;0H => Enemies turn       ")
+				fmt.Printf("\033[8;0H => Enemies turn           ")
 				moveTarget := (positionX-1)*3 + positionY -1
 				stateResult, err = client.Move(ctx, &proto.Action{Id: id, Move: int64(moveTarget)})
 				switch stateResult.Result {
 				case ttt.InvalidMove:
-					term.Close()
-					drawFinalState(stateResult.State, "Invalid Move")
-					break keyPressListenerLoop
+					drawState(stateResult.State)
+					fmt.Printf("\033[8;0H => Invalid Move, Your turn           ")
 				case ttt.Won:
 					term.Close()
 					drawFinalState(stateResult.State, "You Won")
