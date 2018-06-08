@@ -135,8 +135,8 @@ keyPressListenerLoop:
 					break keyPressListenerLoop
 				case ttt.Draw:
 					term.Close()
-					break keyPressListenerLoop
 					drawFinalState(stateResult.State, "Game Draw")
+					break keyPressListenerLoop
 				default:
 					// valid move
 					drawState(stateResult.State)
