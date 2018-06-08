@@ -18,8 +18,9 @@ func main() {
 	address := flag.String("address", ":8000", "server address")
 	flag.Parse()
 
-	// player1Char := "X"
-	// player2Char := "O"
+	player1Char := flag.String("player1Char", "X", "Character to use for Player 1")
+	player2Char := flag.String("player2Char", "O", "Character to use for Player 2")
+
 	positionXOld := 1
 	positionYOld := 1
 	positionX := 1
@@ -30,10 +31,10 @@ func main() {
 			return " "
 		}
 		if field == 1 {
-			return "\033[0;34mX\033[0m"
+			return fmt.Sprintf("\033[0;34m%s\033[0m", *player1Char)
 		}
 		if field == -1 {
-			return "\033[0;32mO\033[0m"
+			return fmt.Sprintf("\033[0;32m%s\033[0m", *player2Char)
 		}
 		panic("INVALID FIELD VALUE RECEIVED")
 	}
@@ -117,7 +118,7 @@ keyPressListenerLoop:
 				}
 			case term.KeySpace:
 				// undraw input brackets and place X in orange
-				fmt.Printf("\033[0;94m\033[%v;%vH X \033[0m", positionX*2, positionY*4-2)
+				fmt.Printf("\033[0;94m\033[%v;%vH %s \033[0m", positionX*2, positionY*4-2, *player1Char)
 				fmt.Printf("\033[8;0H => Enemies turn           ")
 				moveTarget := (positionX-1)*3 + positionY - 1
 				stateResult, err = client.Move(ctx, &proto.Action{Id: id, Move: int64(moveTarget)})
