@@ -106,7 +106,7 @@ func (s *Server) NewGame(ctx context.Context, new *proto.New) (*proto.StateResul
 func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult, error) {
 	log.Printf("Server.Move(Id: %d, Move: %d)", a.Id, a.Move)
 
-	gameId := a.Id-a.Id%2
+	gameId := (a.Id-a.Id%2)/2
 	log.Printf("Looking for game #%d", gameId)
 
 	g, ok := s.games[gameId]
