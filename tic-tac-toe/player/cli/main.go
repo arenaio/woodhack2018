@@ -54,7 +54,7 @@ func main() {
 	client := proto.NewTicTacToeClient(conn)
 
 	ctx := context.Background()
-	stateResult, err := client.NewGame(ctx, &proto.New{GameType: ttt.RegularTicTacToe})
+	stateResult, err := client.NewGame(ctx, &proto.New{GameType: ttt.RegularTicTacToe, Name: 'CLI'})
  	id := stateResult.Id
 
 	termErr := term.Init()
