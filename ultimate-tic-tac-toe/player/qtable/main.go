@@ -4,24 +4,26 @@ import (
 	"flag"
 	"log"
 	"math/rand"
+	"time"
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"math"
+	"strconv"
+	"strings"
+
 	ttt "github.com/arenaio/woodhack2018/tic-tac-toe"
 	"github.com/arenaio/woodhack2018/tic-tac-toe/proto"
-	"strings"
-	"strconv"
-	"math"
-	"encoding/json"
-	"io/ioutil"
-	"fmt"
 )
 
 var r *rand.Rand
 
 func init() {
-	r = rand.New(rand.NewSource(199))
+	r = rand.New(rand.NewSource(time.Now().UnixNano()))
 }
 
 func main() {
@@ -158,7 +160,7 @@ func (q *Qlearning) makeMove(state []int64) int64 {
 
 	displayState(state)
 	log.Printf(
-		"%.4f %.4f %.4f\n%.4f %.4f %.4f\n%.4f %.4f %.4f",
+		"\n\n%.4f %.4f %.4f\n%.4f %.4f %.4f\n%.4f %.4f %.4f",
 		actionTable[0],
 		actionTable[1],
 		actionTable[2],
@@ -190,9 +192,16 @@ func (q *Qlearning) makeMove(state []int64) int64 {
 }
 
 func displayState(state []int64) {
+	print("\n")
 	for index, element := range state {
 		print(" ", element, " ")
-		if (index+1)%3 == 0 {
+		if len(state) == 81 && (index+1)%3 == 0 {
+			print("|")
+		}
+		if len(state) == 81 && (index+1)%9 == 0 {
+			print("\n──────────────────────────────\n")
+		}
+		if len(state) != 81 && (index+1)%3 == 0 {
 			print("\n")
 		}
 	}
