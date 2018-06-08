@@ -12,6 +12,12 @@ import (
 	"github.com/arenaio/woodhack2018/tic-tac-toe/proto"
 )
 
+var r *rand.Rand
+
+func init() {
+	r = rand.New(rand.NewSource(199))
+}
+
 func main() {
 	address := ":8000"
 
@@ -27,10 +33,9 @@ func main() {
 	stateResult, err := client.NewGame(ctx, &proto.New{GameType: ttt.RegularTicTacToe})
 	id := stateResult.Id
 	ongoingGame := true
-	r := rand.New(rand.NewSource(199))
 
 	turnCount := 0
-	fieldCount := 9
+	fieldCount := len(stateResult.State)
 
 	for {
 		switch stateResult.Result {
@@ -56,8 +61,8 @@ func main() {
 		if !ongoingGame || turnCount > fieldCount {
 			break
 		}
-		// state size? assuming 81 for now
-		moveTarget := r.Int63n(int64(fieldCount))
+
+		moveTarget := makeMove(stateResult.State)
 		print("\nMoving to: ", moveTarget, "\n")
 		stateResult, err = client.Move(ctx, &proto.Action{Id: id, Move: moveTarget})
 
@@ -66,6 +71,25 @@ func main() {
 		}
 		time.Sleep(1000 * time.Millisecond)
 	}
+}
+
+func makeMove(state []int64) int64 {
+	// Fully random
+	// moveTarget := r.Int63n(int64(len(state)))
+	// Randomly select valid targets
+	validTargets := getValidTargets(state)
+	moveTarget := validTargets[r.Int63n(int64(len(validTargets)))]
+	return moveTarget
+}
+
+func getValidTargets(state []int64) []int64 {
+	tmp := make([]int64, 0)
+	for i, v := range state {
+		if v == 0 {
+			tmp = append(tmp, int64(i))
+		}
+	}
+	return tmp
 }
 
 func displayState(state []int64) {
