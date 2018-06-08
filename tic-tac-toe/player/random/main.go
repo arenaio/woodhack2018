@@ -21,22 +21,24 @@ func init() {
 func main() {
 	address := ":8000"
 
+	for {
+		runGameOnServer(address)
+	}
+}
+
+func runGameOnServer(address string) {
 	conn, err := grpc.Dial(address, grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("unable to connect on port %s: %v", address, err)
 	}
 	defer conn.Close()
-
 	client := proto.NewTicTacToeClient(conn)
-
 	ctx := context.Background()
-	stateResult, err := client.NewGame(ctx, &proto.New{GameType: ttt.RegularTicTacToe, Name: 'Random'})
+	stateResult, err := client.NewGame(ctx, &proto.New{GameType: ttt.RegularTicTacToe, Name: "Random"})
 	id := stateResult.Id
 	ongoingGame := true
-
 	turnCount := 0
 	fieldCount := len(stateResult.State)
-
 	for {
 		switch stateResult.Result {
 		case ttt.InvalidMove:
@@ -53,6 +55,9 @@ func main() {
 			// game lost
 			ongoingGame = false
 			break
+		case ttt.Draw:
+			print("Draw game!\n")
+			ongoingGame = false
 		default:
 			// valid move
 			turnCount++
