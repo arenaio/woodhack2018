@@ -120,6 +120,8 @@ func (q *Qlearning) runGameOnServer(address, name string) {
 
 		q.train(lastState, action, stateResult.State, stateResult.Result)
 
+		println("XXXX", stateResult.Result)
+
 		switch stateResult.Result {
 		case ttt.InvalidMove:
 			print("Made an illegal move\n")
@@ -134,7 +136,7 @@ func (q *Qlearning) runGameOnServer(address, name string) {
 			ongoingGame = false
 		default:
 			// valid move
-			//displayState(stateResult.State)
+			displayState(stateResult.State)
 		}
 	}
 
@@ -192,37 +194,39 @@ func (q *Qlearning) makeMove(state []int64) int64 {
 }
 
 func displayState(state []int64) {
+	lookup := map[int64]string{-1: "X", 0:" ", 1: "O"}
+	
 	i := 0
 	print("\n")
 	fmt.Printf("┌───┬───┬───┐   ┌───┬───┬───┐   ┌───┬───┬───┐ \n")
-	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", state[i], state[i+1], state[i+2], state[i+9], state[i+10], state[i+11], state[i+18], state[i+19], state[i+20])
+	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", lookup[state[i]], lookup[state[i+1]], lookup[state[i+2]], lookup[state[i+9]], lookup[state[i+10]], lookup[state[i+11]], lookup[state[i+18]], lookup[state[i+19]], lookup[state[i+20]])
 	fmt.Printf("├───┼───┼───┤   ├───┼───┼───┤   ├───┼───┼───┤ \n")
 	i += 3
-	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", state[i], state[i+1], state[i+2], state[i+9], state[i+10], state[i+11], state[i+18], state[i+19], state[i+20])
+	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", lookup[state[i]], lookup[state[i+1]], lookup[state[i+2]], lookup[state[i+9]], lookup[state[i+10]], lookup[state[i+11]], lookup[state[i+18]], lookup[state[i+19]], lookup[state[i+20]])
 	fmt.Printf("├───┼───┼───┤   ├───┼───┼───┤   ├───┼───┼───┤ \n")
 	i += 3
-	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", state[i], state[i+1], state[i+2], state[i+9], state[i+10], state[i+11], state[i+18], state[i+19], state[i+20])
+	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", lookup[state[i]], lookup[state[i+1]], lookup[state[i+2]], lookup[state[i+9]], lookup[state[i+10]], lookup[state[i+11]], lookup[state[i+18]], lookup[state[i+19]], lookup[state[i+20]])
 	fmt.Printf("└───┴───┴───┘   └───┴───┴───┘   └───┴───┴───┘ \n")
 	print("\n")
 	fmt.Printf("┌───┬───┬───┐   ┌───┬───┬───┐   ┌───┬───┬───┐ \n")
-	i += 3
-	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", state[i], state[i+1], state[i+2], state[i+9], state[i+10], state[i+11], state[i+18], state[i+19], state[i+20])
+	i += 21
+	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", lookup[state[i]], lookup[state[i+1]], lookup[state[i+2]], lookup[state[i+9]], lookup[state[i+10]], lookup[state[i+11]], lookup[state[i+18]], lookup[state[i+19]], lookup[state[i+20]])
 	fmt.Printf("├───┼───┼───┤   ├───┼───┼───┤   ├───┼───┼───┤ \n")
 	i += 3
-	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", state[i], state[i+1], state[i+2], state[i+9], state[i+10], state[i+11], state[i+18], state[i+19], state[i+20])
+	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", lookup[state[i]], lookup[state[i+1]], lookup[state[i+2]], lookup[state[i+9]], lookup[state[i+10]], lookup[state[i+11]], lookup[state[i+18]], lookup[state[i+19]], lookup[state[i+20]])
 	fmt.Printf("├───┼───┼───┤   ├───┼───┼───┤   ├───┼───┼───┤ \n")
 	i += 3
-	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", state[i], state[i+1], state[i+2], state[i+9], state[i+10], state[i+11], state[i+18], state[i+19], state[i+20])
+	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", lookup[state[i]], lookup[state[i+1]], lookup[state[i+2]], lookup[state[i+9]], lookup[state[i+10]], lookup[state[i+11]], lookup[state[i+18]], lookup[state[i+19]], lookup[state[i+20]])
 	fmt.Printf("└───┴───┴───┘   └───┴───┴───┘   └───┴───┴───┘ \n")
 	print("\n")
 	fmt.Printf("┌───┬───┬───┐   ┌───┬───┬───┐   ┌───┬───┬───┐ \n")
-	i += 3
-	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", state[i], state[i+1], state[i+2], state[i+9], state[i+10], state[i+11], state[i+18], state[i+19], state[i+20])
+	i += 21
+	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", lookup[state[i]], lookup[state[i+1]], lookup[state[i+2]], lookup[state[i+9]], lookup[state[i+10]], lookup[state[i+11]], lookup[state[i+18]], lookup[state[i+19]], lookup[state[i+20]])
 	fmt.Printf("├───┼───┼───┤   ├───┼───┼───┤   ├───┼───┼───┤ \n")
 	i += 3
-	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", state[i], state[i+1], state[i+2], state[i+9], state[i+10], state[i+11], state[i+18], state[i+19], state[i+20])
+	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", lookup[state[i]], lookup[state[i+1]], lookup[state[i+2]], lookup[state[i+9]], lookup[state[i+10]], lookup[state[i+11]], lookup[state[i+18]], lookup[state[i+19]], lookup[state[i+20]])
 	fmt.Printf("├───┼───┼───┤   ├───┼───┼───┤   ├───┼───┼───┤ \n")
 	i += 3
-	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", state[i], state[i+1], state[i+2], state[i+9], state[i+10], state[i+11], state[i+18], state[i+19], state[i+20])
+	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", lookup[state[i]], lookup[state[i+1]], lookup[state[i+2]], lookup[state[i+9]], lookup[state[i+10]], lookup[state[i+11]], lookup[state[i+18]], lookup[state[i+19]], lookup[state[i+20]])
 	fmt.Printf("└───┴───┴───┘   └───┴───┴───┘   └───┴───┴───┘ \n")
 }

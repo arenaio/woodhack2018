@@ -123,7 +123,7 @@ func (s *Server) NewGame(ctx context.Context, new *proto.New) (*proto.StateResul
 }
 
 func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult, error) {
-	//log.Printf("Server.Move(Id: %d, Move: %d)", a.Id, a.Move)
+	log.Printf("Server.Move(Id: %d, Move: %d)", a.Id, a.Move)
 
 	gameId := (a.Id - a.Id%2) / 2
 	//log.Printf("Looking for game #%d", gameId)
@@ -157,7 +157,7 @@ func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult,
 	}
 
 	if g.lastMove > -1 {
-		subBoardStart := g.lastMove - g.lastMove%9
+		subBoardStart := (g.lastMove % 9) * 9
 		subBoardEnd := subBoardStart + 9
 
 		subState := g.state[subBoardStart:subBoardEnd]
@@ -182,12 +182,12 @@ func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult,
 		if isFirstPlayer {
 			s.stats[g.p1Name].won++
 			s.stats[g.p2Name].lost++
-			log.Printf("Game %d is won by %s", gameId, g.p1Name)
+			log.Printf("Game #%d is won by %s", gameId, g.p1Name)
 			g.Player1Done()
 		} else {
 			s.stats[g.p1Name].lost++
 			s.stats[g.p2Name].won++
-			log.Printf("Game %d is won by %s", gameId, g.p2Name)
+			log.Printf("Game #%d is won by %s", gameId, g.p2Name)
 			g.Player2Done()
 		}
 
@@ -226,13 +226,13 @@ func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult,
 	result := ttt.ValidMove
 	if g.IsLost(a.Id) {
 		if isFirstPlayer {
-			log.Printf("Game %d is lost for %s", gameId, g.p1Name)
+			log.Printf("Game #%d is lost for %s", gameId, g.p1Name)
 		} else {
-			log.Printf("Game %d is lost for %s", gameId, g.p2Name)
+			log.Printf("Game #%d is lost for %s", gameId, g.p2Name)
 		}
 		result = ttt.Lost
 	} else if g.IsDraw() {
-		log.Printf("Game %d is a draw", gameId)
+		log.Printf("Game #%d is a draw", gameId)
 		result = ttt.Draw
 	}
 
