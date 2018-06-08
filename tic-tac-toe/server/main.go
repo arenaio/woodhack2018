@@ -12,6 +12,7 @@ import (
 
 	ttt "github.com/arenaio/woodhack2018/tic-tac-toe"
 	"github.com/arenaio/woodhack2018/tic-tac-toe/proto"
+	"sync"
 )
 
 func main() {
@@ -24,12 +25,13 @@ func main() {
 
 	srv := grpc.NewServer()
 	proto.RegisterTicTacToeServer(srv, NewServer())
-	srv.Serve(listener)
 	log.Printf("listening on %s", address)
+	log.Print(srv.Serve(listener))
 }
 
 type Server struct {
 	games        map[int64]*Game
+	m            sync.Mutex
 	nextPlayerId int64
 	//ultimateGames map[int64]*Game
 }
@@ -62,7 +64,9 @@ func (s *Server) NewGame(ctx context.Context, new *proto.New) (*proto.StateResul
 		))
 	}
 
+	s.m.Lock()
 	playerId := s.nextPlayerId
+	s.m.Unlock()
 
 	var g *Game
 	var ok bool
@@ -85,40 +89,49 @@ func (s *Server) NewGame(ctx context.Context, new *proto.New) (*proto.StateResul
 		}
 		g.p2 = playerId
 		log.Printf("found game: %s", g)
-		<-g.d1 // wait for player 1
+		g.WaitForPlayer1() // since player 1 begins the game wait for first move
 	}
 
+	s.m.Lock()
 	s.nextPlayerId++
+	s.m.Unlock()
 
 	return &proto.StateResult{
 		Id:     playerId,
 		State:  mapOutput(g.state, playerId == g.p1),
-		Result: 0,
+		Result: ttt.ValidMove,
 	}, nil
 }
 
 func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult, error) {
 	log.Printf("Server.Move(Id: %d, Move: %d)", a.Id, a.Move)
 
-	g, ok := s.games[a.Id-a.Id%2]
+	gameId := a.Id-a.Id%2
+	log.Printf("Looking for game #%d", gameId)
+
+	g, ok := s.games[gameId]
 	if !ok {
+		log.Printf("game #%d not found", gameId)
 		return nil, errors.New("game not found")
 	}
-
 	log.Printf("game found: %s", g)
 
-	if g.IsDraw() || g.IsWon(g.p1) || g.IsWon(g.p2) {
+	if g.isOver() {
+		log.Printf("game #%d is already over", gameId)
 		return nil, errors.New("game is already over")
 	}
 
-	if (g.turn == 1 && a.Id != g.p1) || (g.turn == 2 && a.Id != g.p2) {
+	isFirstPlayer := a.Id == g.p1
+	if (g.turn == 1 && !isFirstPlayer) || (g.turn == 2 && isFirstPlayer) {
+		log.Printf("player #%d tried to make a move, but it was not his turn", a.Id)
 		return nil, errors.New("it's not your turn")
 	}
 
 	if g.state[a.Move] != 0 {
+		log.Printf("player #%d tried to make an invalid move (%d)", a.Id, a.Move)
 		return &proto.StateResult{
 			Id:     a.Id,
-			State:  g.state,
+			State:  mapOutput(g.state, isFirstPlayer),
 			Result: ttt.InvalidMove,
 		}, nil
 	}
@@ -126,11 +139,14 @@ func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult,
 	g.state[a.Move] = g.turn
 	g.turn = 3 - g.turn
 
-	if g.IsWon(g.p1) {
-		if a.Id == g.p1 {
-			g.d2 <- struct{}{}
+	log.Printf("Game had received move: %s", g)
+
+	if g.IsWon(a.Id) {
+		log.Printf("Game %d is won by %d", gameId, a.Id)
+		if isFirstPlayer {
+			g.Player1Done()
 		} else {
-			g.d1 <- struct{}{}
+			g.Player2Done()
 		}
 		return &proto.StateResult{
 			Id:     a.Id,
@@ -140,10 +156,10 @@ func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult,
 	}
 
 	if g.IsDraw() {
-		if a.Id == g.p1 {
-			g.d2 <- struct{}{}
+		if isFirstPlayer {
+			g.Player1Done()
 		} else {
-			g.d1 <- struct{}{}
+			g.Player2Done()
 		}
 		return &proto.StateResult{
 			Id:     a.Id,
@@ -152,25 +168,21 @@ func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult,
 		}, nil
 	}
 
-	if a.Id == g.p1 {
-		g.d1 <- struct{}{} // player 1 done
-		<-g.d2             // wait for for player 2
+	if isFirstPlayer {
+		g.Player1Done()
+		g.WaitForPlayer2()
 	} else {
-		g.d2 <- struct{}{}
-		<-g.d1
+		g.Player2Done()
+		g.WaitForPlayer1()
 	}
 
 	result := ttt.ValidMove
-	if g.IsDraw() {
-		result = ttt.Draw
-	}
-
-	if g.IsWon(a.Id) {
-		result = ttt.Won
-	}
-
 	if g.IsLost(a.Id) {
+		log.Printf("Game %d is lost for %d", gameId, a.Id)
 		result = ttt.Lost
+	} else if g.IsDraw() {
+		log.Printf("Game %d is a draw", gameId)
+		result = ttt.Draw
 	}
 
 	return &proto.StateResult{
@@ -206,19 +218,26 @@ type Game struct {
 func (g Game) String() string {
 	state := ""
 	for index, element := range g.state {
-		state += fmt.Sprintf(" %d ", element)
+		state += fmt.Sprintf("%d ", element)
 		if (index+1)%3 == 0 {
-			state += "\n"
+			state += "\t"
 		}
 	}
 
 	return fmt.Sprintf(
-		"Game #%d: %d vs. %d\n%sturn: %d",
+		"Game #%d: %d vs. %d\n%s\nturn: %d",
 		g.p1/2, g.p1, g.p2, state, g.turn,
 	)
 }
 
-func (g Game) IsWon(p int64) bool {
+func (g Game) IsWon(pId int64) bool {
+	var p int64
+	if g.p1 == pId {
+		p = 1
+	} else {
+		p = 2
+	}
+
 	places := [][]int64{
 		{0, 1, 2},
 		{3, 4, 5},
@@ -231,7 +250,7 @@ func (g Game) IsWon(p int64) bool {
 	}
 
 	for _, ps := range places {
-		if p == ps[0] && ps[0] == ps[1] && ps[1] == ps[2] {
+		if p == g.state[ps[0]] && p == g.state[ps[1]] && p == g.state[ps[2]] {
 			return true
 		}
 	}
@@ -255,4 +274,24 @@ func (g Game) IsDraw() bool {
 	}
 
 	return true
+}
+
+func (g Game) isOver() bool {
+	return g.IsWon(g.p1) || g.IsWon(g.p2) || g.IsDraw()
+}
+
+func (g Game) Player1Done() {
+	g.d1 <- struct{}{}
+}
+
+func (g Game) Player2Done() {
+	g.d2 <- struct{}{}
+}
+
+func (g Game) WaitForPlayer1() {
+	<-g.d1
+}
+
+func (g Game) WaitForPlayer2() {
+	<-g.d2
 }
