@@ -16,10 +16,9 @@ import (
 func main() {
 	name := flag.String("name", "CLI", "your name")
 	address := flag.String("address", ":8000", "server address")
-	flag.Parse()
-
 	player1Char := flag.String("player1Char", "X", "Character to use for Player 1")
 	player2Char := flag.String("player2Char", "O", "Character to use for Player 2")
+	flag.Parse()
 
 	positionXOld := 1
 	positionYOld := 1
