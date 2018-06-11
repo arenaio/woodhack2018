@@ -38,11 +38,15 @@ func main() {
 		DiscountFactor:  1,
 	}
 
-	for gameCount := 0; ; gameCount++ {
+	for gameCount := 1; ; gameCount++ {
 		q.runGameOnServer(*address, *name)
 
-		if gameCount%100 == 0 {
+		if gameCount%1000 == 0 {
+			log.Printf("%d Episodes - Exploration Rate: %.4f", gameCount, q.ExplorationRate)
+		}
+		if gameCount%1000 == 0 {
 			q.storeTable(gameCount)
+			log.Printf("%d.json saved", gameCount)
 		}
 	}
 }
@@ -94,11 +98,15 @@ func (q *Qlearning) runGameOnServer(address, name string) {
 		log.Fatalf("unable to connect on port %s: %v", address, err)
 	}
 	defer conn.Close()
+
 	client := proto.NewTicTacToeClient(conn)
 	ctx := context.Background()
 
-	log.Print("Starting new game")
-	stateResult, err := client.NewGame(ctx, &proto.New{GameType: ttt.RegularTicTacToe, Name: name})
+	//log.Print("Starting new game")
+	stateResult, err := client.NewGame(ctx, &proto.New{GameType: ttt.UltimateTicTacToe, Name: name})
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	displayState(stateResult.State)
 
@@ -107,7 +115,7 @@ func (q *Qlearning) runGameOnServer(address, name string) {
 
 	for ongoingGame {
 		action := q.makeMove(stateResult.State)
-		print("\nMoving to: ", action, "\n")
+		//print("\nMoving to: ", action, "\n")
 
 		lastState := stateResult.State
 
@@ -120,19 +128,17 @@ func (q *Qlearning) runGameOnServer(address, name string) {
 
 		q.train(lastState, action, stateResult.State, stateResult.Result)
 
-		println("XXXX", stateResult.Result)
-
 		switch stateResult.Result {
 		case ttt.InvalidMove:
-			print("Made an illegal move\n")
+			//print("Made an illegal move\n")
 		case ttt.Won:
-			print("Won the game!\n")
+			//print("Won the game!\n")
 			ongoingGame = false
 		case ttt.Lost:
-			print("Lost the game!\n")
+			//print("Lost the game!\n")
 			ongoingGame = false
 		case ttt.Draw:
-			print("Draw game!\n")
+			//print("Draw game!\n")
 			ongoingGame = false
 		default:
 			// valid move
@@ -161,26 +167,12 @@ func (q *Qlearning) getActionTable(state []int64) map[int64]float64 {
 func (q *Qlearning) makeMove(state []int64) int64 {
 	actionTable := q.getActionTable(state)
 
-	//displayState(state)
-	//log.Printf(
-	//	"\n\n%.4f %.4f %.4f\n%.4f %.4f %.4f\n%.4f %.4f %.4f",
-	//	actionTable[0],
-	//	actionTable[1],
-	//	actionTable[2],
-	//	actionTable[3],
-	//	actionTable[4],
-	//	actionTable[5],
-	//	actionTable[6],
-	//	actionTable[7],
-	//	actionTable[8],
-	//)
-
 	if r.Float64() < q.ExplorationRate {
-		log.Printf("Explore (%.2f)", q.ExplorationRate)
+		//log.Printf("Exploring (%.2f)", q.ExplorationRate)
 		return int64(r.Intn(len(state)))
 	}
 
-	log.Printf("I know what's best... (%.2f)", q.ExplorationRate)
+	//log.Printf("I know what's best... (%.2f)", q.ExplorationRate)
 	bestMove := int64(-1)
 	bestValue := -math.MaxFloat64
 	for action, value := range actionTable {
@@ -194,6 +186,7 @@ func (q *Qlearning) makeMove(state []int64) int64 {
 }
 
 func displayState(state []int64) {
+	return
 	lookup := map[int64]string{-1: "X", 0: " ", 1: "O"}
 
 	i := 0
