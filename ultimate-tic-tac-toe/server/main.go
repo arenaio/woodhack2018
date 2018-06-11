@@ -123,7 +123,7 @@ func (s *Server) NewGame(ctx context.Context, new *proto.New) (*proto.StateResul
 }
 
 func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult, error) {
-	log.Printf("Server.Move(Id: %d, Move: %d)", a.Id, a.Move)
+	//log.Printf("Server.Move(Id: %d, Move: %d)", a.Id, a.Move)
 
 	gameId := (a.Id - a.Id%2) / 2
 	//log.Printf("Looking for game #%d", gameId)
@@ -215,6 +215,26 @@ func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult,
 		}, nil
 	}
 
+	if g.IsLost(a.Id) {
+		if isFirstPlayer {
+			s.stats[g.p1Name].lost++
+			s.stats[g.p2Name].won++
+			log.Printf("Game #%d is lost by %s", gameId, g.p1Name)
+			g.Player1Done()
+		} else {
+			s.stats[g.p1Name].won++
+			s.stats[g.p2Name].lost++
+			log.Printf("Game #%d is lost by %s", gameId, g.p2Name)
+			g.Player2Done()
+		}
+		return &proto.StateResult{
+			Id:       a.Id,
+			State:    mapOutput(g.state, a.Id == g.p1),
+			Result:   ttt.Lost,
+			LastMove: g.lastMove,
+		}, nil
+	}
+
 	if isFirstPlayer {
 		g.Player1Done()
 		g.WaitForPlayer2()
@@ -224,7 +244,14 @@ func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult,
 	}
 
 	result := ttt.ValidMove
-	if g.IsLost(a.Id) {
+	if g.IsWon(a.Id) {
+		if isFirstPlayer {
+			log.Printf("Game #%d is won by %s", gameId, g.p1Name)
+		} else {
+			log.Printf("Game #%d is won by %s", gameId, g.p2Name)
+		}
+		result = ttt.Won
+	} else if g.IsLost(a.Id) {
 		if isFirstPlayer {
 			log.Printf("Game #%d is lost for %s", gameId, g.p1Name)
 		} else {
@@ -294,7 +321,7 @@ func (g Game) IsWon(pId int64) bool {
 
 	subBoards := make([]int64, 9)
 	for i := 0; i < 9; i++ {
-		subBoards[i] = getSubResult(g.state[i*9:i*9+9])
+		subBoards[i] = getSubResult(g.state[i*9 : i*9+9])
 	}
 
 	places := [][]int64{
@@ -325,7 +352,7 @@ func (g Game) IsWon(pId int64) bool {
 		}
 	}
 
-	return wonBoards[p] > wonBoards[3 - p]
+	return wonBoards[p] > wonBoards[3-p]
 }
 
 func (g Game) IsLost(p int64) bool {
@@ -339,7 +366,7 @@ func (g Game) IsLost(p int64) bool {
 func (g Game) IsDraw() bool {
 	subBoards := make([]int64, 9)
 	for i := 0; i < 9; i++ {
-		subBoards[i] = getSubResult(g.state[i*9:i*9+9])
+		subBoards[i] = getSubResult(g.state[i*9 : i*9+9])
 	}
 
 	wonBoards := []int64{0, 0, 0}
@@ -360,7 +387,7 @@ func isStateOver(state [] int64) bool {
 	return getSubResult(state) != 0
 }
 
-func getSubResult(state[] int64) int64 {
+func getSubResult(state [] int64) int64 {
 	places := [][]int64{
 		{0, 1, 2},
 		{3, 4, 5},

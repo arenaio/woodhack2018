@@ -194,17 +194,17 @@ func (q *Qlearning) makeMove(state []int64) int64 {
 }
 
 func displayState(state []int64) {
-	lookup := map[int64]string{-1: "X", 0:" ", 1: "O"}
-	
+	lookup := map[int64]string{-1: "X", 0: " ", 1: "O"}
+
 	i := 0
 	print("\n")
 	fmt.Printf("┌───┬───┬───┐   ┌───┬───┬───┐   ┌───┬───┬───┐ \n")
 	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", lookup[state[i]], lookup[state[i+1]], lookup[state[i+2]], lookup[state[i+9]], lookup[state[i+10]], lookup[state[i+11]], lookup[state[i+18]], lookup[state[i+19]], lookup[state[i+20]])
 	fmt.Printf("├───┼───┼───┤   ├───┼───┼───┤   ├───┼───┼───┤ \n")
-	i += 3
+	i += 9
 	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", lookup[state[i]], lookup[state[i+1]], lookup[state[i+2]], lookup[state[i+9]], lookup[state[i+10]], lookup[state[i+11]], lookup[state[i+18]], lookup[state[i+19]], lookup[state[i+20]])
 	fmt.Printf("├───┼───┼───┤   ├───┼───┼───┤   ├───┼───┼───┤ \n")
-	i += 3
+	i += 9
 	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", lookup[state[i]], lookup[state[i+1]], lookup[state[i+2]], lookup[state[i+9]], lookup[state[i+10]], lookup[state[i+11]], lookup[state[i+18]], lookup[state[i+19]], lookup[state[i+20]])
 	fmt.Printf("└───┴───┴───┘   └───┴───┴───┘   └───┴───┴───┘ \n")
 	print("\n")
@@ -212,10 +212,10 @@ func displayState(state []int64) {
 	i += 21
 	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", lookup[state[i]], lookup[state[i+1]], lookup[state[i+2]], lookup[state[i+9]], lookup[state[i+10]], lookup[state[i+11]], lookup[state[i+18]], lookup[state[i+19]], lookup[state[i+20]])
 	fmt.Printf("├───┼───┼───┤   ├───┼───┼───┤   ├───┼───┼───┤ \n")
-	i += 3
+	i += 9
 	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", lookup[state[i]], lookup[state[i+1]], lookup[state[i+2]], lookup[state[i+9]], lookup[state[i+10]], lookup[state[i+11]], lookup[state[i+18]], lookup[state[i+19]], lookup[state[i+20]])
 	fmt.Printf("├───┼───┼───┤   ├───┼───┼───┤   ├───┼───┼───┤ \n")
-	i += 3
+	i += 9
 	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", lookup[state[i]], lookup[state[i+1]], lookup[state[i+2]], lookup[state[i+9]], lookup[state[i+10]], lookup[state[i+11]], lookup[state[i+18]], lookup[state[i+19]], lookup[state[i+20]])
 	fmt.Printf("└───┴───┴───┘   └───┴───┴───┘   └───┴───┴───┘ \n")
 	print("\n")
@@ -223,10 +223,10 @@ func displayState(state []int64) {
 	i += 21
 	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", lookup[state[i]], lookup[state[i+1]], lookup[state[i+2]], lookup[state[i+9]], lookup[state[i+10]], lookup[state[i+11]], lookup[state[i+18]], lookup[state[i+19]], lookup[state[i+20]])
 	fmt.Printf("├───┼───┼───┤   ├───┼───┼───┤   ├───┼───┼───┤ \n")
-	i += 3
+	i += 9
 	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", lookup[state[i]], lookup[state[i+1]], lookup[state[i+2]], lookup[state[i+9]], lookup[state[i+10]], lookup[state[i+11]], lookup[state[i+18]], lookup[state[i+19]], lookup[state[i+20]])
 	fmt.Printf("├───┼───┼───┤   ├───┼───┼───┤   ├───┼───┼───┤ \n")
-	i += 3
+	i += 9
 	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", lookup[state[i]], lookup[state[i+1]], lookup[state[i+2]], lookup[state[i+9]], lookup[state[i+10]], lookup[state[i+11]], lookup[state[i+18]], lookup[state[i+19]], lookup[state[i+20]])
 	fmt.Printf("└───┴───┴───┘   └───┴───┴───┘   └───┴───┴───┘ \n")
 }

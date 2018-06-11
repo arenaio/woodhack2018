@@ -4,19 +4,19 @@ import (
 	"flag"
 	"log"
 	"math/rand"
-        "os"
+	"os"
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
+	"encoding/json"
+	"fmt"
 	ttt "github.com/arenaio/woodhack2018/tic-tac-toe"
 	"github.com/arenaio/woodhack2018/tic-tac-toe/proto"
-	"strings"
-	"strconv"
-	"math"
-	"encoding/json"
 	"io/ioutil"
-	"fmt"
+	"math"
+	"strconv"
+	"strings"
 )
 
 var r *rand.Rand
@@ -28,7 +28,7 @@ func init() {
 func main() {
 	address := flag.String("address", ":8000", "server address")
 	name := flag.String("name", "Q-Table", "bot name")
-        file := flag.String("file", "", "File with Q-Table dataset.")
+	file := flag.String("file", "", "File with Q-Table dataset.")
 	flag.Parse()
 
 	q := &Qlearning{
@@ -36,27 +36,27 @@ func main() {
 		ExplorationRate: 1,
 		LearningRate:    0.001,
 		DiscountFactor:  1,
-                Epoches:         0,
+		Epoches:         0,
 	}
 
-        if len(*file) > 0 {
-                log.Printf("Fetching from state file: %s", *file)
-                q.fetchFromFile(*file)
-                q.ExplorationRate = 0
-        }
+	if len(*file) > 0 {
+		log.Printf("Fetching from state file: %s", *file)
+		q.fetchFromFile(*file)
+		q.ExplorationRate = 0
+	}
 
 	for gameCount := 0; ; gameCount++ {
-                log.Printf("Current Epoche: %d", q.Epoches)
+		log.Printf("Current Epoche: %d", q.Epoches)
 		q.runGameOnServer(*address, *name)
 
-                // read the epoches if set
-                if q.Epoches > 0 && gameCount == 0 {
-                        gameCount = q.Epoches
-                }
+		// read the epoches if set
+		if q.Epoches > 0 && gameCount == 0 {
+			gameCount = q.Epoches
+		}
 
 		if gameCount%1000 == 0 && q.ExplorationRate > 0 {
 
-                        q.Epoches = gameCount/1000
+			q.Epoches = gameCount / 1000
 			q.storeTable(gameCount)
 		}
 	}
@@ -67,7 +67,7 @@ type Qlearning struct {
 	ExplorationRate float64                      `json:"ExplorationRate"`
 	LearningRate    float64                      `json:"LearningRate"`
 	DiscountFactor  float64                      `json:"DiscountFactor"`
-        Epoches         int                          `json:"Epoches"`
+	Epoches         int                          `json:"Epoches"`
 }
 
 func (q *Qlearning) storeTable(gameCount int) {
@@ -80,13 +80,13 @@ func (q *Qlearning) storeTable(gameCount int) {
 }
 
 func (q *Qlearning) fetchFromFile(filePath string) {
-        raw, err := ioutil.ReadFile(filePath)
-        if err != nil {
-                log.Printf("Error loading state file: %s, %s", filePath, err)
-                os.Exit(1)
-        }
+	raw, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		log.Printf("Error loading state file: %s, %s", filePath, err)
+		os.Exit(1)
+	}
 
-        json.Unmarshal(raw, &q)
+	json.Unmarshal(raw, &q)
 }
 
 func hashState(state []int64) string {
@@ -143,10 +143,10 @@ func (q *Qlearning) runGameOnServer(address, name string) {
 			log.Fatal(err)
 		}
 
-                // don't train when the exploration rate is set to zero
-                if q.ExplorationRate > 0 {
-                        q.train(lastState, action, stateResult.State, stateResult.Result)
-                }
+		// don't train when the exploration rate is set to zero
+		if q.ExplorationRate > 0 {
+			q.train(lastState, action, stateResult.State, stateResult.Result)
+		}
 
 		switch stateResult.Result {
 		case ttt.InvalidMove:
@@ -189,16 +189,16 @@ func (q *Qlearning) makeMove(state []int64) int64 {
 
 	displayState(state)
 	// log.Printf(
-		// "%.4f %.4f %.4f\n%.4f %.4f %.4f\n%.4f %.4f %.4f",
-		// actionTable[0],
-		// actionTable[1],
-		// actionTable[2],
-		// actionTable[3],
-		// actionTable[4],
-		// actionTable[5],
-		// actionTable[6],
-		// actionTable[7],
-		// actionTable[8],
+	// "%.4f %.4f %.4f\n%.4f %.4f %.4f\n%.4f %.4f %.4f",
+	// actionTable[0],
+	// actionTable[1],
+	// actionTable[2],
+	// actionTable[3],
+	// actionTable[4],
+	// actionTable[5],
+	// actionTable[6],
+	// actionTable[7],
+	// actionTable[8],
 	// )
 
 	if r.Float64() < q.ExplorationRate {
