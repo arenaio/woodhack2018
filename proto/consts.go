@@ -1,4 +1,6 @@
-package tic_tac_toe
+// Probably could have been done in grpc spec, but that wasn't our main focus
+
+package proto
 
 const InvalidMove int64 = -2
 const Lost int64 = -1

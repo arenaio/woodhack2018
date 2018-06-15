@@ -8,8 +8,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	ttt "github.com/arenaio/woodhack2018/ultimate-tic-tac-toe"
-	"github.com/arenaio/woodhack2018/ultimate-tic-tac-toe/proto"
+	"github.com/arenaio/woodhack2018/proto"
 )
 
 var r *rand.Rand
@@ -23,22 +22,22 @@ func main() {
 	name := flag.String("name", "Random", "bot name")
 	flag.Parse()
 
-	for {
-		runGameOnServer(*address, *name)
-	}
-}
-
-func runGameOnServer(address string, name string) {
-	conn, err := grpc.Dial(address, grpc.WithInsecure())
+	conn, err := grpc.Dial(*address, grpc.WithInsecure())
 	if err != nil {
-		log.Fatalf("unable to connect on port %s: %v", address, err)
+		log.Fatalf("unable to connect on port %s: %s", *address, err)
 	}
 	defer conn.Close()
 
 	client := proto.NewTicTacToeClient(conn)
 	ctx := context.Background()
 
-	stateResult, err := client.NewGame(ctx, &proto.New{GameType: ttt.UltimateTicTacToe, Name: name})
+	for {
+		runGameOnServer(client, ctx, *name)
+	}
+}
+
+func runGameOnServer(client proto.TicTacToeClient, ctx context.Context, name string) {
+	stateResult, err := client.NewGame(ctx, &proto.New{GameType: proto.UltimateTicTacToe, Name: name})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -48,7 +47,7 @@ func runGameOnServer(address string, name string) {
 
 	for ongoingGame {
 		stateResult, err = client.Move(ctx, &proto.Action{
-			Id: id,
+			Id:   id,
 			Move: int64(r.Intn(len(stateResult.State))),
 		})
 		if err != nil {
@@ -56,13 +55,13 @@ func runGameOnServer(address string, name string) {
 		}
 
 		switch stateResult.Result {
-		case ttt.Won:
+		case proto.Won:
 			ongoingGame = false
-		case ttt.Lost:
+		case proto.Lost:
 			ongoingGame = false
-		case ttt.Draw:
+		case proto.Draw:
 			ongoingGame = false
-		case ttt.InvalidMove:
+		case proto.InvalidMove:
 		default:
 			// valid move
 		}

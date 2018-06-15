@@ -1,23 +1,21 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
+	"fmt"
+	"io/ioutil"
 	"log"
+	"math"
 	"math/rand"
+	"strconv"
+	"strings"
 	"time"
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"math"
-	"strconv"
-	"strings"
-
-	ttt "github.com/arenaio/woodhack2018/tic-tac-toe"
-	"github.com/arenaio/woodhack2018/tic-tac-toe/proto"
+	"github.com/arenaio/woodhack2018/proto"
 )
 
 var r *rand.Rand
@@ -31,6 +29,15 @@ func main() {
 	name := flag.String("name", "Q-Table", "bot name")
 	flag.Parse()
 
+	conn, err := grpc.Dial(*address, grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("unable to connect on port %s: %s", *address, err)
+	}
+	defer conn.Close()
+
+	client := proto.NewTicTacToeClient(conn)
+	ctx := context.Background()
+
 	q := &Qlearning{
 		Table:           make(map[string]map[int64]float64),
 		ExplorationRate: 1,
@@ -39,12 +46,12 @@ func main() {
 	}
 
 	for gameCount := 1; ; gameCount++ {
-		q.runGameOnServer(*address, *name)
+		q.runGameOnServer(client, ctx, *name)
 
 		if gameCount%1000 == 0 {
 			log.Printf("%d Episodes - Exploration Rate: %.4f", gameCount, q.ExplorationRate)
 		}
-		if gameCount%1000 == 0 {
+		if gameCount%10000 == 0 {
 			q.storeTable(gameCount)
 			log.Printf("%d.json saved", gameCount)
 		}
@@ -79,7 +86,7 @@ func (q *Qlearning) train(lastState []int64, action int64, futureState []int64, 
 	actionTable := q.getActionTable(lastState)
 	futureActionTable := q.getActionTable(futureState)
 
-	estimatedOptimalFuture := float64(ttt.InvalidMove)
+	estimatedOptimalFuture := float64(proto.InvalidMove)
 	for _, qvalue := range futureActionTable {
 		if qvalue > estimatedOptimalFuture {
 			estimatedOptimalFuture = qvalue
@@ -92,18 +99,9 @@ func (q *Qlearning) train(lastState []int64, action int64, futureState []int64, 
 	q.ExplorationRate *= 0.9999999
 }
 
-func (q *Qlearning) runGameOnServer(address, name string) {
-	conn, err := grpc.Dial(address, grpc.WithInsecure())
-	if err != nil {
-		log.Fatalf("unable to connect on port %s: %v", address, err)
-	}
-	defer conn.Close()
-
-	client := proto.NewTicTacToeClient(conn)
-	ctx := context.Background()
-
+func (q *Qlearning) runGameOnServer(client proto.TicTacToeClient, ctx context.Context, name string) {
 	//log.Print("Starting new game")
-	stateResult, err := client.NewGame(ctx, &proto.New{GameType: ttt.UltimateTicTacToe, Name: name})
+	stateResult, err := client.NewGame(ctx, &proto.New{GameType: proto.UltimateTicTacToe, Name: name})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -129,15 +127,15 @@ func (q *Qlearning) runGameOnServer(address, name string) {
 		q.train(lastState, action, stateResult.State, stateResult.Result)
 
 		switch stateResult.Result {
-		case ttt.InvalidMove:
+		case proto.InvalidMove:
 			//print("Made an illegal move\n")
-		case ttt.Won:
+		case proto.Won:
 			//print("Won the game!\n")
 			ongoingGame = false
-		case ttt.Lost:
+		case proto.Lost:
 			//print("Lost the game!\n")
 			ongoingGame = false
-		case ttt.Draw:
+		case proto.Draw:
 			//print("Draw game!\n")
 			ongoingGame = false
 		default:
@@ -194,10 +192,10 @@ func displayState(state []int64) {
 	fmt.Printf("┌───┬───┬───┐   ┌───┬───┬───┐   ┌───┬───┬───┐ \n")
 	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", lookup[state[i]], lookup[state[i+1]], lookup[state[i+2]], lookup[state[i+9]], lookup[state[i+10]], lookup[state[i+11]], lookup[state[i+18]], lookup[state[i+19]], lookup[state[i+20]])
 	fmt.Printf("├───┼───┼───┤   ├───┼───┼───┤   ├───┼───┼───┤ \n")
-	i += 9
+	i += 3
 	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", lookup[state[i]], lookup[state[i+1]], lookup[state[i+2]], lookup[state[i+9]], lookup[state[i+10]], lookup[state[i+11]], lookup[state[i+18]], lookup[state[i+19]], lookup[state[i+20]])
 	fmt.Printf("├───┼───┼───┤   ├───┼───┼───┤   ├───┼───┼───┤ \n")
-	i += 9
+	i += 3
 	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", lookup[state[i]], lookup[state[i+1]], lookup[state[i+2]], lookup[state[i+9]], lookup[state[i+10]], lookup[state[i+11]], lookup[state[i+18]], lookup[state[i+19]], lookup[state[i+20]])
 	fmt.Printf("└───┴───┴───┘   └───┴───┴───┘   └───┴───┴───┘ \n")
 	print("\n")
@@ -205,10 +203,10 @@ func displayState(state []int64) {
 	i += 21
 	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", lookup[state[i]], lookup[state[i+1]], lookup[state[i+2]], lookup[state[i+9]], lookup[state[i+10]], lookup[state[i+11]], lookup[state[i+18]], lookup[state[i+19]], lookup[state[i+20]])
 	fmt.Printf("├───┼───┼───┤   ├───┼───┼───┤   ├───┼───┼───┤ \n")
-	i += 9
+	i += 3
 	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", lookup[state[i]], lookup[state[i+1]], lookup[state[i+2]], lookup[state[i+9]], lookup[state[i+10]], lookup[state[i+11]], lookup[state[i+18]], lookup[state[i+19]], lookup[state[i+20]])
 	fmt.Printf("├───┼───┼───┤   ├───┼───┼───┤   ├───┼───┼───┤ \n")
-	i += 9
+	i += 3
 	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", lookup[state[i]], lookup[state[i+1]], lookup[state[i+2]], lookup[state[i+9]], lookup[state[i+10]], lookup[state[i+11]], lookup[state[i+18]], lookup[state[i+19]], lookup[state[i+20]])
 	fmt.Printf("└───┴───┴───┘   └───┴───┴───┘   └───┴───┴───┘ \n")
 	print("\n")
@@ -216,10 +214,10 @@ func displayState(state []int64) {
 	i += 21
 	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", lookup[state[i]], lookup[state[i+1]], lookup[state[i+2]], lookup[state[i+9]], lookup[state[i+10]], lookup[state[i+11]], lookup[state[i+18]], lookup[state[i+19]], lookup[state[i+20]])
 	fmt.Printf("├───┼───┼───┤   ├───┼───┼───┤   ├───┼───┼───┤ \n")
-	i += 9
+	i += 3
 	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", lookup[state[i]], lookup[state[i+1]], lookup[state[i+2]], lookup[state[i+9]], lookup[state[i+10]], lookup[state[i+11]], lookup[state[i+18]], lookup[state[i+19]], lookup[state[i+20]])
 	fmt.Printf("├───┼───┼───┤   ├───┼───┼───┤   ├───┼───┼───┤ \n")
-	i += 9
+	i += 3
 	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", lookup[state[i]], lookup[state[i+1]], lookup[state[i+2]], lookup[state[i+9]], lookup[state[i+10]], lookup[state[i+11]], lookup[state[i+18]], lookup[state[i+19]], lookup[state[i+20]])
 	fmt.Printf("└───┴───┴───┘   └───┴───┴───┘   └───┴───┴───┘ \n")
 }

@@ -2,15 +2,15 @@ package main
 
 import (
 	"context"
+	"errors"
+	"flag"
 	"fmt"
 	"log"
 
-	"flag"
-	term "github.com/nsf/termbox-go"
-
-	ttt "github.com/arenaio/woodhack2018/tic-tac-toe"
-	"github.com/arenaio/woodhack2018/tic-tac-toe/proto"
+	"github.com/nsf/termbox-go"
 	"google.golang.org/grpc"
+
+	"github.com/arenaio/woodhack2018/proto"
 )
 
 func main() {
@@ -20,53 +20,9 @@ func main() {
 	player2Char := flag.String("player2Char", "O", "Character to use for Player 2")
 	flag.Parse()
 
-	positionXOld := 1
-	positionYOld := 1
-	positionX := 1
-	positionY := 1
-
-	parseField := func(field int64) string {
-		if field == 0 {
-			return " "
-		}
-		if field == 1 {
-			return fmt.Sprintf("\033[0;34m%s\033[0m", *player1Char)
-		}
-		if field == -1 {
-			return fmt.Sprintf("\033[0;32m%s\033[0m", *player2Char)
-		}
-		panic("INVALID FIELD VALUE RECEIVED")
-	}
-
-	goTo := func(x int, y int) {
-		fmt.Printf("\033[%v;%vH \033[%v;%vH ", positionXOld*2, positionYOld*4-2, positionXOld*2, positionYOld*4)
-		positionXOld = positionX
-		positionYOld = positionY
-		fmt.Printf("\033[0;31m\033[%v;%vH[\033[%v;%vH]\033[0m", x*2, y*4-2, x*2, y*4)
-	}
-
-	drawState := func(state []int64) {
-		fmt.Printf("\033[0;0H") // go to pos 0/0
-		fmt.Printf("┌───┬───┬───┐\n")
-		fmt.Printf("│ %s │ %s │ %s │\n", parseField(state[0]), parseField(state[1]), parseField(state[2]))
-		fmt.Printf("├───┼───┼───┤\n")
-		fmt.Printf("│ %s │ %s │ %s │\n", parseField(state[3]), parseField(state[4]), parseField(state[5]))
-		fmt.Printf("├───┼───┼───┤\n")
-		fmt.Printf("│ %s │ %s │ %s │\n", parseField(state[6]), parseField(state[7]), parseField(state[8]))
-		fmt.Printf("└───┴───┴───┘")
-		goTo(positionX, positionY) // draw input brackets
-		fmt.Printf("\033[8;0H => Your turn           ")
-	}
-
-	drawFinalState := func(state []int64, message string) {
-		fmt.Printf("┌───┬───┬───┐\n")
-		fmt.Printf("│ %s │ %s │ %s │\n", parseField(state[0]), parseField(state[1]), parseField(state[2]))
-		fmt.Printf("├───┼───┼───┤\n")
-		fmt.Printf("│ %s │ %s │ %s │\n", parseField(state[3]), parseField(state[4]), parseField(state[5]))
-		fmt.Printf("├───┼───┼───┤\n")
-		fmt.Printf("│ %s │ %s │ %s │\n", parseField(state[6]), parseField(state[7]), parseField(state[8]))
-		fmt.Printf("└───┴───┴───┘\n")
-		fmt.Println("  ", message)
+	err := termbox.Init()
+	if err != nil {
+		log.Fatalf("unable to initialize terminal interface: %s", err)
 	}
 
 	conn, err := grpc.Dial(*address, grpc.WithInsecure())
@@ -75,75 +31,170 @@ func main() {
 	}
 	defer conn.Close()
 
-	client := proto.NewTicTacToeClient(conn)
-
-	ctx := context.Background()
-	stateResult, err := client.NewGame(ctx, &proto.New{GameType: ttt.RegularTicTacToe, Name: *name})
-	id := stateResult.Id
-
-	termErr := term.Init()
-	if termErr != nil {
-		panic(termErr)
+	g := NewGame(*name, *player1Char, *player2Char)
+	err = g.run(proto.NewTicTacToeClient(conn), context.Background())
+	if err != nil {
+		log.Fatal(err)
 	}
-	drawState(stateResult.State)
+}
 
-keyPressListenerLoop:
+type Game struct {
+	name         string
+	player1Char  string
+	player2Char  string
+	positionXOld int
+	positionYOld int
+	positionX    int
+	positionY    int
+}
+
+func NewGame(name, player1Char, player2Char string) *Game {
+	return &Game{
+		name:         name,
+		player1Char:  player1Char,
+		player2Char:  player2Char,
+		positionX:    1,
+		positionXOld: 1,
+		positionY:    1,
+		positionYOld: 1,
+	}
+}
+
+func (g *Game) parseField(field int64) string {
+	switch field {
+	case 0:
+		return " "
+	case 1:
+		return fmt.Sprintf("\033[0;34m%s\033[0m", g.player1Char)
+	case -1:
+		return fmt.Sprintf("\033[0;32m%s\033[0m", g.player2Char)
+	default:
+		panic(fmt.Sprintf("invalid field received: %d", field))
+	}
+}
+
+func (g *Game) goTo(x int, y int) {
+	fmt.Printf("\033[%v;%vH \033[%v;%vH ", g.positionXOld*2, g.positionYOld*4-2, g.positionXOld*2, g.positionYOld*4)
+	g.positionXOld = g.positionX
+	g.positionYOld = g.positionY
+	fmt.Printf("\033[0;31m\033[%v;%vH[\033[%v;%vH]\033[0m", x*2, y*4-2, x*2, y*4)
+}
+
+func (g *Game) drawState(state []int64) {
+	i := 0
+	fmt.Printf("┌───┬───┬───┐   ┌───┬───┬───┐   ┌───┬───┬───┐ \n")
+	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", g.parseField(state[i]), g.parseField(state[i+1]), g.parseField(state[i+2]), g.parseField(state[i+9]), g.parseField(state[i+10]), g.parseField(state[i+11]), g.parseField(state[i+18]), g.parseField(state[i+19]), g.parseField(state[i+20]))
+	fmt.Printf("├───┼───┼───┤   ├───┼───┼───┤   ├───┼───┼───┤ \n")
+	i += 3
+	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", g.parseField(state[i]), g.parseField(state[i+1]), g.parseField(state[i+2]), g.parseField(state[i+9]), g.parseField(state[i+10]), g.parseField(state[i+11]), g.parseField(state[i+18]), g.parseField(state[i+19]), g.parseField(state[i+20]))
+	fmt.Printf("├───┼───┼───┤   ├───┼───┼───┤   ├───┼───┼───┤ \n")
+	i += 3
+	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", g.parseField(state[i]), g.parseField(state[i+1]), g.parseField(state[i+2]), g.parseField(state[i+9]), g.parseField(state[i+10]), g.parseField(state[i+11]), g.parseField(state[i+18]), g.parseField(state[i+19]), g.parseField(state[i+20]))
+	fmt.Printf("└───┴───┴───┘   └───┴───┴───┘   └───┴───┴───┘ \n")
+	print("\n")
+	fmt.Printf("┌───┬───┬───┐   ┌───┬───┬───┐   ┌───┬───┬───┐ \n")
+	i += 21
+	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", g.parseField(state[i]), g.parseField(state[i+1]), g.parseField(state[i+2]), g.parseField(state[i+9]), g.parseField(state[i+10]), g.parseField(state[i+11]), g.parseField(state[i+18]), g.parseField(state[i+19]), g.parseField(state[i+20]))
+	fmt.Printf("├───┼───┼───┤   ├───┼───┼───┤   ├───┼───┼───┤ \n")
+	i += 3
+	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", g.parseField(state[i]), g.parseField(state[i+1]), g.parseField(state[i+2]), g.parseField(state[i+9]), g.parseField(state[i+10]), g.parseField(state[i+11]), g.parseField(state[i+18]), g.parseField(state[i+19]), g.parseField(state[i+20]))
+	fmt.Printf("├───┼───┼───┤   ├───┼───┼───┤   ├───┼───┼───┤ \n")
+	i += 3
+	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", g.parseField(state[i]), g.parseField(state[i+1]), g.parseField(state[i+2]), g.parseField(state[i+9]), g.parseField(state[i+10]), g.parseField(state[i+11]), g.parseField(state[i+18]), g.parseField(state[i+19]), g.parseField(state[i+20]))
+	fmt.Printf("└───┴───┴───┘   └───┴───┴───┘   └───┴───┴───┘ \n")
+	print("\n")
+	fmt.Printf("┌───┬───┬───┐   ┌───┬───┬───┐   ┌───┬───┬───┐ \n")
+	i += 21
+	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", g.parseField(state[i]), g.parseField(state[i+1]), g.parseField(state[i+2]), g.parseField(state[i+9]), g.parseField(state[i+10]), g.parseField(state[i+11]), g.parseField(state[i+18]), g.parseField(state[i+19]), g.parseField(state[i+20]))
+	fmt.Printf("├───┼───┼───┤   ├───┼───┼───┤   ├───┼───┼───┤ \n")
+	i += 3
+	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", g.parseField(state[i]), g.parseField(state[i+1]), g.parseField(state[i+2]), g.parseField(state[i+9]), g.parseField(state[i+10]), g.parseField(state[i+11]), g.parseField(state[i+18]), g.parseField(state[i+19]), g.parseField(state[i+20]))
+	fmt.Printf("├───┼───┼───┤   ├───┼───┼───┤   ├───┼───┼───┤ \n")
+	i += 3
+	fmt.Printf("│ %v │ %v │ %v │   │ %v │ %v │ %v │   │ %v │ %v │ %v │ \n", g.parseField(state[i]), g.parseField(state[i+1]), g.parseField(state[i+2]), g.parseField(state[i+9]), g.parseField(state[i+10]), g.parseField(state[i+11]), g.parseField(state[i+18]), g.parseField(state[i+19]), g.parseField(state[i+20]))
+	fmt.Printf("└───┴───┴───┘   └───┴───┴───┘   └───┴───┴───┘ \n")
+}
+
+func (g *Game) drawInput(state []int64) {
+	fmt.Printf("\033[0;0H") // go to pos 0/0
+	g.drawState(state)
+	g.goTo(g.positionX, g.positionY) // draw input brackets
+	fmt.Printf("\033[8;0H => Your turn           ")
+}
+
+func (g *Game) drawFinal(state []int64, message string) {
+	g.drawState(state)
+	fmt.Println("  ", message)
+}
+
+func (g *Game) run(client proto.TicTacToeClient, ctx context.Context) error {
+	stateResult, err := client.NewGame(ctx, &proto.New{GameType: proto.UltimateTicTacToe, Name: g.name})
+	if err != nil {
+		return errors.New(fmt.Sprintf("unable join game: %s", err))
+	}
+
+	id := stateResult.Id
+	g.drawInput(stateResult.State)
+
 	for {
-		switch ev := term.PollEvent(); ev.Type {
-		case term.EventKey:
+		switch ev := termbox.PollEvent(); ev.Type {
+		case termbox.EventKey:
 			switch ev.Key {
-			case term.KeyEsc:
-				term.Close()
-				break keyPressListenerLoop
-			case term.KeyArrowUp:
-				if positionX > 1 {
-					positionX--
-					goTo(positionX, positionY)
+			case termbox.KeyEsc:
+				termbox.Close()
+				return nil
+			case termbox.KeyArrowUp:
+				if g.positionX > 1 {
+					g.positionX--
+					g.goTo(g.positionX, g.positionY)
 				}
-			case term.KeyArrowDown:
-				if positionX < 3 {
-					positionX++
-					goTo(positionX, positionY)
+			case termbox.KeyArrowDown:
+				if g.positionX < 9 {
+					g.positionX++
+					g.goTo(g.positionX, g.positionY)
 				}
-			case term.KeyArrowLeft:
-				if positionY > 1 {
-					positionY--
-					goTo(positionX, positionY)
+			case termbox.KeyArrowLeft:
+				if g.positionY > 1 {
+					g.positionY--
+					g.goTo(g.positionX, g.positionY)
 				}
-			case term.KeyArrowRight:
-				if positionY < 3 {
-					positionY++
-					goTo(positionX, positionY)
+			case termbox.KeyArrowRight:
+				if g.positionY < 9 {
+					g.positionY++
+					g.goTo(g.positionX, g.positionY)
 				}
-			case term.KeySpace:
+			case termbox.KeySpace:
 				// undraw input brackets and place X in orange
-				fmt.Printf("\033[0;94m\033[%v;%vH %s \033[0m", positionX*2, positionY*4-2, *player1Char)
+				fmt.Printf("\033[0;94m\033[%v;%vH %s \033[0m", g.positionX*2, g.positionY*4-2, g.player1Char)
 				fmt.Printf("\033[8;0H => Enemies turn           ")
-				moveTarget := (positionX-1)*3 + positionY - 1
+				moveTarget := (g.positionX-1)*3 + g.positionY - 1
 				stateResult, err = client.Move(ctx, &proto.Action{Id: id, Move: int64(moveTarget)})
+				if err != nil {
+					log.Fatalf("an error trying to make a move: %s", err)
+				}
 				switch stateResult.Result {
-				case ttt.InvalidMove:
-					drawState(stateResult.State)
+				case proto.InvalidMove:
+					g.drawInput(stateResult.State)
 					fmt.Printf("\033[8;0H => Invalid Move, Your turn           ")
-				case ttt.Won:
-					term.Close()
-					drawFinalState(stateResult.State, "You Won")
-					break keyPressListenerLoop
-				case ttt.Lost:
-					term.Close()
-					drawFinalState(stateResult.State, "You Lost")
-					break keyPressListenerLoop
-				case ttt.Draw:
-					term.Close()
-					drawFinalState(stateResult.State, "Game Draw")
-					break keyPressListenerLoop
-				default:
-					// valid move
-					drawState(stateResult.State)
+				case proto.Won:
+					termbox.Close()
+					g.drawFinal(stateResult.State, "You Won")
+					return nil
+				case proto.Lost:
+					termbox.Close()
+					g.drawFinal(stateResult.State, "You Lost")
+					return nil
+				case proto.Draw:
+					termbox.Close()
+					g.drawFinal(stateResult.State, "Game Draw")
+					return nil
+				default: // valid move
+					g.drawInput(stateResult.State)
 				}
 			}
-		case term.EventError:
-			panic(ev.Err)
+		case termbox.EventError:
+			termbox.Close()
+			return ev.Err
 		}
 	}
 }

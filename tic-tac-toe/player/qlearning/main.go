@@ -1,22 +1,21 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
+	"fmt"
+	"io/ioutil"
 	"log"
+	"math"
 	"math/rand"
 	"os"
+	"strconv"
+	"strings"
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	"encoding/json"
-	"fmt"
-	ttt "github.com/arenaio/woodhack2018/tic-tac-toe"
-	"github.com/arenaio/woodhack2018/tic-tac-toe/proto"
-	"io/ioutil"
-	"math"
-	"strconv"
-	"strings"
+	"github.com/arenaio/woodhack2018/proto"
 )
 
 var r *rand.Rand
@@ -28,49 +27,47 @@ func init() {
 func main() {
 	address := flag.String("address", ":8000", "server address")
 	name := flag.String("name", "Q-Table", "bot name")
-	file := flag.String("file", "", "File with Q-Table dataset.")
+	file := flag.String("file", "", "file with Q-Table data set")
 	flag.Parse()
 
-	q := &Qlearning{
+	q := &qlearning{
 		Table:           make(map[string]map[int64]float64),
 		ExplorationRate: 1,
 		LearningRate:    0.001,
 		DiscountFactor:  1,
-		Epoches:         0,
 	}
 
 	if len(*file) > 0 {
 		log.Printf("Fetching from state file: %s", *file)
 		q.fetchFromFile(*file)
-		q.ExplorationRate = 0
 	}
 
-	for gameCount := 0; ; gameCount++ {
-		log.Printf("Current Epoche: %d", q.Epoches)
-		q.runGameOnServer(*address, *name)
+	conn, err := grpc.Dial(*address, grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("unable to connect on port %s: %s", *address, err)
+	}
+	defer conn.Close()
 
-		// read the epoches if set
-		if q.Epoches > 0 && gameCount == 0 {
-			gameCount = q.Epoches
-		}
+	client := proto.NewTicTacToeClient(conn)
+	ctx := context.Background()
 
-		if gameCount%1000 == 0 && q.ExplorationRate > 0 {
+	for gameCount := 1; ; gameCount++ {
+		q.runGameOnServer(client, ctx, *name)
 
-			q.Epoches = gameCount / 1000
-			q.storeTable(gameCount)
+		if gameCount%1000 == 0 {
+			log.Printf("%d Episodes - Exploration Rate: %.4f", gameCount, q.ExplorationRate)
 		}
 	}
 }
 
-type Qlearning struct {
+type qlearning struct {
 	Table           map[string]map[int64]float64 `json:"Table"`
 	ExplorationRate float64                      `json:"ExplorationRate"`
 	LearningRate    float64                      `json:"LearningRate"`
 	DiscountFactor  float64                      `json:"DiscountFactor"`
-	Epoches         int                          `json:"Epoches"`
 }
 
-func (q *Qlearning) storeTable(gameCount int) {
+func (q *qlearning) storeTable(gameCount int) {
 	bytes, _ := json.Marshal(q)
 
 	err := ioutil.WriteFile(fmt.Sprintf("./%d.json", gameCount), bytes, 0644)
@@ -79,7 +76,7 @@ func (q *Qlearning) storeTable(gameCount int) {
 	}
 }
 
-func (q *Qlearning) fetchFromFile(filePath string) {
+func (q *qlearning) fetchFromFile(filePath string) {
 	raw, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		log.Printf("Error loading state file: %s, %s", filePath, err)
@@ -97,11 +94,11 @@ func hashState(state []int64) string {
 	return strings.Join(stateStr, "")
 }
 
-func (q *Qlearning) train(lastState []int64, action int64, futureState []int64, reward int64) {
+func (q *qlearning) train(lastState []int64, action int64, futureState []int64, reward int64) {
 	actionTable := q.getActionTable(lastState)
 	futureActionTable := q.getActionTable(futureState)
 
-	estimatedOptimalFuture := float64(ttt.InvalidMove)
+	estimatedOptimalFuture := float64(proto.InvalidMove)
 	for _, qvalue := range futureActionTable {
 		if qvalue > estimatedOptimalFuture {
 			estimatedOptimalFuture = qvalue
@@ -111,29 +108,24 @@ func (q *Qlearning) train(lastState []int64, action int64, futureState []int64, 
 	learnedValue := float64(reward) + q.DiscountFactor*estimatedOptimalFuture
 	actionTable[action] = (1-q.LearningRate)*actionTable[action] + q.LearningRate*learnedValue
 
-	q.ExplorationRate *= 0.999999
+	q.ExplorationRate *= 0.99999
 }
 
-func (q *Qlearning) runGameOnServer(address, name string) {
-	conn, err := grpc.Dial(address, grpc.WithInsecure())
+func (q *qlearning) runGameOnServer(client proto.TicTacToeClient, ctx context.Context, name string) {
+	//log.Print("Starting new game")
+	stateResult, err := client.NewGame(ctx, &proto.New{GameType: proto.RegularTicTacToe, Name: name})
 	if err != nil {
-		log.Fatalf("unable to connect on port %s: %v", address, err)
+		log.Fatalf("creating game failed: %s", err)
 	}
-	defer conn.Close()
-	client := proto.NewTicTacToeClient(conn)
-	ctx := context.Background()
 
-	log.Print("Starting new game")
-	stateResult, err := client.NewGame(ctx, &proto.New{GameType: ttt.RegularTicTacToe, Name: name})
-
-	displayState(stateResult.State)
+	//displayState(stateResult.State)
 
 	id := stateResult.Id
 	ongoingGame := true
 
 	for ongoingGame {
 		action := q.makeMove(stateResult.State)
-		print("\nMoving to: ", action, "\n")
+		//print("\nMoving to: ", action, "\n")
 
 		lastState := stateResult.State
 
@@ -149,16 +141,16 @@ func (q *Qlearning) runGameOnServer(address, name string) {
 		}
 
 		switch stateResult.Result {
-		case ttt.InvalidMove:
-			print("Made an illegal move\n")
-		case ttt.Won:
-			print("Won the game!\n")
+		case proto.InvalidMove:
+			//print("Made an illegal move\n")
+		case proto.Won:
+			//print("Won the game!\n")
 			ongoingGame = false
-		case ttt.Lost:
-			print("Lost the game!\n")
+		case proto.Lost:
+			//print("Lost the game!\n")
 			ongoingGame = false
-		case ttt.Draw:
-			print("Draw game!\n")
+		case proto.Draw:
+			//print("Draw game!\n")
 			ongoingGame = false
 		default:
 			// valid move
@@ -166,10 +158,10 @@ func (q *Qlearning) runGameOnServer(address, name string) {
 		}
 	}
 
-	displayState(stateResult.State)
+	//displayState(stateResult.State)
 }
 
-func (q *Qlearning) getActionTable(state []int64) map[int64]float64 {
+func (q *qlearning) getActionTable(state []int64) map[int64]float64 {
 	hash := hashState(state)
 
 	actionTable, found := q.Table[hash]
@@ -184,29 +176,17 @@ func (q *Qlearning) getActionTable(state []int64) map[int64]float64 {
 	return actionTable
 }
 
-func (q *Qlearning) makeMove(state []int64) int64 {
+func (q *qlearning) makeMove(state []int64) int64 {
 	actionTable := q.getActionTable(state)
 
-	displayState(state)
-	// log.Printf(
-	// "%.4f %.4f %.4f\n%.4f %.4f %.4f\n%.4f %.4f %.4f",
-	// actionTable[0],
-	// actionTable[1],
-	// actionTable[2],
-	// actionTable[3],
-	// actionTable[4],
-	// actionTable[5],
-	// actionTable[6],
-	// actionTable[7],
-	// actionTable[8],
-	// )
+	//displayState(state)
 
 	if r.Float64() < q.ExplorationRate {
-		log.Printf("Explore (%.2f)", q.ExplorationRate)
+		//log.Printf("Explore (%.2f)", q.ExplorationRate)
 		return int64(r.Intn(len(state)))
 	}
 
-	log.Printf("I know what's best... (%.2f)", q.ExplorationRate)
+	//log.Printf("I know what's best... (%.2f)", q.ExplorationRate)
 	bestMove := int64(-1)
 	bestValue := -math.MaxFloat64
 	for action, value := range actionTable {

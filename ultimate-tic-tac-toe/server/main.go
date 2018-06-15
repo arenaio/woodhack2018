@@ -6,14 +6,13 @@ import (
 	"log"
 	"strings"
 	"net"
+	"sync"
+	"flag"
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	ttt "github.com/arenaio/woodhack2018/ultimate-tic-tac-toe"
-	"github.com/arenaio/woodhack2018/ultimate-tic-tac-toe/proto"
-	"sync"
-	"flag"
+	"github.com/arenaio/woodhack2018/proto"
 )
 
 func main() {
@@ -45,7 +44,7 @@ func NewServer() *Server {
 	}
 }
 
-func (s Server) String() string {
+func (s *Server) String() string {
 	games := make([]string, len(s.games))
 	for i, g := range s.games {
 		games[i] = g.String()
@@ -53,7 +52,7 @@ func (s Server) String() string {
 	return strings.Join(games, "\n")
 }
 
-func (s Server) getStats() string {
+func (s *Server) getStats() string {
 	stats := []string{"Current Standing"}
 	for name, stat := range s.stats {
 		stats = append(stats, fmt.Sprintf(
@@ -82,9 +81,12 @@ func (s *Server) NewGame(ctx context.Context, new *proto.New) (*proto.StateResul
 
 	var g *Game
 	var ok bool
-	if playerId%2 == 0 {
-		log.Print(s.getStats())
 
+	if playerId%1000 == 1{
+		log.Print(s.getStats())
+	}
+
+	if playerId%2 == 0 {
 		g = &Game{
 			p1:       playerId,
 			p1Name:   new.Name,
@@ -118,7 +120,7 @@ func (s *Server) NewGame(ctx context.Context, new *proto.New) (*proto.StateResul
 	return &proto.StateResult{
 		Id:     playerId,
 		State:  mapOutput(g.state, playerId == g.p1),
-		Result: ttt.ValidMove,
+		Result: proto.ValidMove,
 	}, nil
 }
 
@@ -151,7 +153,7 @@ func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult,
 		return &proto.StateResult{
 			Id:       a.Id,
 			State:    mapOutput(g.state, isFirstPlayer),
-			Result:   ttt.InvalidMove,
+			Result:   proto.InvalidMove,
 			LastMove: g.lastMove,
 		}, nil
 	}
@@ -166,7 +168,7 @@ func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult,
 			return &proto.StateResult{
 				Id:       a.Id,
 				State:    mapOutput(g.state, isFirstPlayer),
-				Result:   ttt.InvalidMove,
+				Result:   proto.InvalidMove,
 				LastMove: g.lastMove,
 			}, nil
 		}
@@ -194,7 +196,7 @@ func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult,
 		return &proto.StateResult{
 			Id:       a.Id,
 			State:    mapOutput(g.state, a.Id == g.p1),
-			Result:   ttt.Won,
+			Result:   proto.Won,
 			LastMove: g.lastMove,
 		}, nil
 	}
@@ -210,7 +212,7 @@ func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult,
 		return &proto.StateResult{
 			Id:       a.Id,
 			State:    mapOutput(g.state, a.Id == g.p1),
-			Result:   ttt.Draw,
+			Result:   proto.Draw,
 			LastMove: g.lastMove,
 		}, nil
 	}
@@ -230,7 +232,7 @@ func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult,
 		return &proto.StateResult{
 			Id:       a.Id,
 			State:    mapOutput(g.state, a.Id == g.p1),
-			Result:   ttt.Lost,
+			Result:   proto.Lost,
 			LastMove: g.lastMove,
 		}, nil
 	}
@@ -243,24 +245,24 @@ func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult,
 		g.WaitForPlayer1()
 	}
 
-	result := ttt.ValidMove
+	result := proto.ValidMove
 	if g.IsWon(a.Id) {
 		if isFirstPlayer {
 			//log.Printf("Game #%d is won by %s", gameId, g.p1Name)
 		} else {
 			//log.Printf("Game #%d is won by %s", gameId, g.p2Name)
 		}
-		result = ttt.Won
+		result = proto.Won
 	} else if g.IsLost(a.Id) {
 		if isFirstPlayer {
 			//log.Printf("Game #%d is lost for %s", gameId, g.p1Name)
 		} else {
 			//log.Printf("Game #%d is lost for %s", gameId, g.p2Name)
 		}
-		result = ttt.Lost
+		result = proto.Lost
 	} else if g.IsDraw() {
 		//log.Printf("Game #%d is a draw", gameId)
-		result = ttt.Draw
+		result = proto.Draw
 	}
 
 	return &proto.StateResult{

@@ -8,8 +8,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	ttt "github.com/arenaio/woodhack2018/tic-tac-toe"
-	"github.com/arenaio/woodhack2018/tic-tac-toe/proto"
+	"github.com/arenaio/woodhack2018/proto"
 )
 
 var r *rand.Rand
@@ -29,64 +28,70 @@ func main() {
 
 	switch clientType {
 	case 1:
-		clientName = "Random"
+		clientName = "Random1"
 	case 2:
-		clientName = "Random without invalid"
+		clientName = "Random2"
 	case 3:
-		clientName = "Random with clever moves"
+		clientName = "Random3"
 	}
 
+	conn, err := grpc.Dial(*address, grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("unable to connect on port %s: %s", *address, err)
+	}
+	defer conn.Close()
+
+	client := proto.NewTicTacToeClient(conn)
+	ctx := context.Background()
+
 	for {
-		runGameOnServer(*address)
+		runGameOnServer(client, ctx)
 	}
 }
 
-func runGameOnServer(address string) {
-	conn, err := grpc.Dial(address, grpc.WithInsecure())
+func runGameOnServer(client proto.TicTacToeClient, ctx context.Context) {
+	//log.Print("Starting new game")
+	stateResult, err := client.NewGame(ctx, &proto.New{GameType: proto.RegularTicTacToe, Name: clientName})
 	if err != nil {
-		log.Fatalf("unable to connect on port %s: %v", address, err)
+		log.Fatalf("creating game failed: %s", err)
 	}
-	defer conn.Close()
-	client := proto.NewTicTacToeClient(conn)
-	ctx := context.Background()
-	log.Print("Starting new game")
-	stateResult, err := client.NewGame(ctx, &proto.New{GameType: ttt.RegularTicTacToe, Name: clientName})
+
 	id := stateResult.Id
 	ongoingGame := true
 	turnCount := 0
 	fieldCount := len(stateResult.State)
 	for {
 		switch stateResult.Result {
-		case ttt.InvalidMove:
+		case proto.InvalidMove:
 			// invalid move
-			print("Made an illegal move\n")
+			//print("Made an illegal move\n")
 			break
-		case ttt.Won:
+		case proto.Won:
 			// game won
-			print("Won the game!\n")
+			//print("Won the game!\n")
 			ongoingGame = false
 			break
-		case ttt.Lost:
-			print("Lost the game!\n")
+		case proto.Lost:
+			//print("Lost the game!\n")
 			// game lost
 			ongoingGame = false
 			break
-		case ttt.Draw:
-			print("Draw game!\n")
+		case proto.Draw:
+			//print("Draw game!\n")
 			ongoingGame = false
 		default:
 			// valid move
 			turnCount++
-			displayState(stateResult.State)
+			//displayState(stateResult.State)
 		}
 
 		if !ongoingGame || turnCount > fieldCount {
-			displayState(stateResult.State)
+			//displayState(stateResult.State)
 			break
 		}
 
 		moveTarget := makeMove(stateResult.State)
-		print("\nMoving to: ", moveTarget, "\n")
+		//print("\nMoving to: ", moveTarget, "\n")
 		stateResult, err = client.Move(ctx, &proto.Action{Id: id, Move: moveTarget})
 
 		if err != nil {
