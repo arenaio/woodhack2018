@@ -73,11 +73,31 @@ func (g *Game) parseField(field int64) string {
 	}
 }
 
+func (g *Game) displayPos(x, y int) (pX, pY int) {
+	pX = x * 2
+	pY = y * 4
+	if x > 3 {
+		pX += 2
+	}
+	if x > 6 {
+		pX += 2
+	}
+	if y > 3 {
+		pY += 4
+	}
+	if y > 6 {
+		pY += 4
+	}
+	return pX, pY
+}
+
 func (g *Game) goTo(x int, y int) {
-	fmt.Printf("\033[%v;%vH \033[%v;%vH ", g.positionXOld*2, g.positionYOld*4-2, g.positionXOld*2, g.positionYOld*4)
+	pX, pY := g.displayPos(g.positionXOld, g.positionYOld)
+	fmt.Printf("\033[%v;%vH \033[%v;%vH ", pX, pY-2, pX, pY)
 	g.positionXOld = g.positionX
 	g.positionYOld = g.positionY
-	fmt.Printf("\033[0;31m\033[%v;%vH[\033[%v;%vH]\033[0m", x*2, y*4-2, x*2, y*4)
+	pX, pY = g.displayPos(x, y)
+	fmt.Printf("\033[0;31m\033[%v;%vH[\033[%v;%vH]\033[0m", pX, pY-2, pX, pY)
 }
 
 func (g *Game) drawState(state []int64) {
@@ -115,11 +135,17 @@ func (g *Game) drawState(state []int64) {
 	fmt.Printf("└───┴───┴───┘   └───┴───┴───┘   └───┴───┴───┘ \n")
 }
 
+func (g *Game) getMove(x, y int) int {
+	fX := []int{0, 3, 6, 27, 30, 33, 54, 57, 60}
+	fY := []int{0, 1, 2, 9, 10, 11, 18, 19, 20}
+	return fX[x-1] + fY[y-1]
+}
+
 func (g *Game) drawInput(state []int64) {
 	fmt.Printf("\033[0;0H") // go to pos 0/0
 	g.drawState(state)
 	g.goTo(g.positionX, g.positionY) // draw input brackets
-	fmt.Printf("\033[8;0H => Your turn           ")
+	fmt.Printf("\033[25;0H => Your turn           ")
 }
 
 func (g *Game) drawFinal(state []int64, message string) {
@@ -165,9 +191,10 @@ func (g *Game) run(client proto.TicTacToeClient, ctx context.Context) error {
 				}
 			case termbox.KeySpace:
 				// undraw input brackets and place X in orange
-				fmt.Printf("\033[0;94m\033[%v;%vH %s \033[0m", g.positionX*2, g.positionY*4-2, g.player1Char)
-				fmt.Printf("\033[8;0H => Enemies turn           ")
-				moveTarget := (g.positionX-1)*3 + g.positionY - 1
+				pX, pY := g.displayPos(g.positionX, g.positionY)
+				fmt.Printf("\033[0;94m\033[%v;%vH %s \033[0m", pX, pY-2, g.player1Char)
+				fmt.Printf("\033[25;0H => Enemies turn           ")
+				moveTarget := g.getMove(g.positionX, g.positionY)
 				stateResult, err = client.Move(ctx, &proto.Action{Id: id, Move: int64(moveTarget)})
 				if err != nil {
 					log.Fatalf("an error trying to make a move: %s", err)
@@ -175,7 +202,7 @@ func (g *Game) run(client proto.TicTacToeClient, ctx context.Context) error {
 				switch stateResult.Result {
 				case proto.InvalidMove:
 					g.drawInput(stateResult.State)
-					fmt.Printf("\033[8;0H => Invalid Move, Your turn           ")
+					fmt.Printf("\033[25;0H => Invalid Move, Your turn           ")
 				case proto.Won:
 					termbox.Close()
 					g.drawFinal(stateResult.State, "You Won")
