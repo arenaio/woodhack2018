@@ -2,12 +2,12 @@ package main
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"log"
-	"strings"
 	"net"
+	"strings"
 	"sync"
-	"flag"
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -82,7 +82,7 @@ func (s *Server) NewGame(ctx context.Context, new *proto.New) (*proto.StateResul
 	var g *Game
 	var ok bool
 
-	if playerId%1000 == 1{
+	if playerId%1000 == 1 {
 		log.Print(s.getStats())
 	}
 
@@ -149,7 +149,7 @@ func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult,
 	}
 
 	if g.state[a.Move] != 0 {
-		//log.Printf("player #%d tried to make an invalid move (%d)", a.Id, a.Move)
+		//log.Printf("player #%d tried to make an invalid move, field already occupied (%d)", a.Id, a.Move)
 		return &proto.StateResult{
 			Id:       a.Id,
 			State:    mapOutput(g.state, isFirstPlayer),
@@ -163,8 +163,8 @@ func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult,
 		subBoardEnd := subBoardStart + 9
 
 		subState := g.state[subBoardStart:subBoardEnd]
-		if !isStateOver(subState) && (a.Move < subBoardStart || a.Move > subBoardEnd) {
-			//log.Printf("player #%d tried to make an invalid move (%d)", a.Id, a.Move)
+		if !isStateOver(subState) && (a.Move < subBoardStart || a.Move >= subBoardEnd) {
+			//log.Printf("player #%d tried to make an invalid move, not in expected sub board %d-%d (%d)", a.Id, subBoardStart, subBoardEnd, a.Move)
 			return &proto.StateResult{
 				Id:       a.Id,
 				State:    mapOutput(g.state, isFirstPlayer),
@@ -174,11 +174,26 @@ func (s *Server) Move(ctx context.Context, a *proto.Action) (*proto.StateResult,
 		}
 	}
 
+	targetBoardStart := a.Move - a.Move%9
+	targetBoardEnd := targetBoardStart + 9
+
+	targetBoardState := g.state[targetBoardStart:targetBoardEnd]
+	//log.Printf("%d...%d: %v", targetBoardStart, targetBoardEnd, targetBoardState)
+	if isStateOver(targetBoardState) {
+		//log.Printf("player #%d tried to make an invalid move, sub board already done (%d)", a.Id, a.Move)
+		return &proto.StateResult{
+			Id:       a.Id,
+			State:    mapOutput(g.state, isFirstPlayer),
+			Result:   proto.InvalidMove,
+			LastMove: g.lastMove,
+		}, nil
+	}
+
 	g.state[a.Move] = g.turn
 	g.turn = 3 - g.turn
 	g.lastMove = a.Move
 
-	//log.Printf("Game had received move: %s", g)
+	//log.Printf("Game had received move: %d", a.Move)
 
 	if g.IsWon(a.Id) {
 		if isFirstPlayer {
@@ -385,11 +400,11 @@ func (g Game) IsDraw() bool {
 	return wonBoards[1] == wonBoards[2]
 }
 
-func isStateOver(state [] int64) bool {
+func isStateOver(state []int64) bool {
 	return getSubResult(state) != 0
 }
 
-func getSubResult(state [] int64) int64 {
+func getSubResult(state []int64) int64 {
 	places := [][]int64{
 		{0, 1, 2},
 		{3, 4, 5},
